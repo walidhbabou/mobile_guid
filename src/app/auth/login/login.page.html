@@ -1,0 +1,95 @@
+<ion-content [fullscreen]="true" class="auth-screen">
+  <div class="auth-shell">
+    <section class="auth-hero">
+      <div class="auth-hero__backdrop scenic-visual theme-chefchaouen">
+        <div class="auth-hero__copy">
+          <span class="hero-tag">Guide smart</span>
+          <h1>Bienvenue !</h1>
+          <p>Guide Touristique Intelligent pour vos sorties au Maroc.</p>
+        </div>
+
+        <div class="hero-highlights">
+          <span>Chefchaouen</span>
+          <span>Rabat</span>
+          <span>Agadir</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card surface-card">
+      <div class="auth-card__header">
+        <div>
+          <p class="eyebrow">Connexion</p>
+          <h2>Reprenez votre exploration</h2>
+        </div>
+
+        <button type="button" class="demo-link" (click)="fillDemoAccount()">
+          Compte demo
+        </button>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="login()" class="auth-form">
+        <label class="field">
+          <span class="field__label">Adresse e-mail</span>
+          <div class="field__shell">
+            <ion-icon name="mail-outline"></ion-icon>
+            <ion-input formControlName="email" type="email" placeholder="sophie@guide.ma"></ion-input>
+          </div>
+          <small class="error-text" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+            Entrez une adresse valide.
+          </small>
+        </label>
+
+        <label class="field">
+          <span class="field__label">Mot de passe</span>
+          <div class="field__shell">
+            <ion-icon name="lock-closed-outline"></ion-icon>
+            <ion-input
+              formControlName="password"
+              [type]="showPassword ? 'text' : 'password'"
+              placeholder="123456"
+            ></ion-input>
+            <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
+              <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+            </button>
+          </div>
+          <small class="error-text" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            Utilisez au moins 6 caracteres.
+          </small>
+        </label>
+
+        <div class="meta-row">
+          <label class="check-row">
+            <ion-checkbox formControlName="rememberMe"></ion-checkbox>
+            <span>Rester connecte</span>
+          </label>
+
+          <button type="button" class="text-link" (click)="goToForgotPassword()">
+            Mot de passe oublie ?
+          </button>
+        </div>
+
+        <ion-button type="submit" expand="block" class="primary-cta" [disabled]="isLoading">
+          <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
+          <span *ngIf="!isLoading">Connexion</span>
+        </ion-button>
+      </form>
+
+      <div class="separator">
+        <span>ou</span>
+      </div>
+
+      <ion-button expand="block" fill="outline" class="secondary-cta" (click)="loginWithGoogle()">
+        <ion-icon slot="start" name="logo-google"></ion-icon>
+        Connexion avec Google
+      </ion-button>
+
+      <p class="auth-footer">
+        Vous n avez pas de compte ?
+        <button type="button" class="text-link strong-link" (click)="goToSignup()">
+          Inscrivez-vous
+        </button>
+      </p>
+    </section>
+  </div>
+</ion-content>

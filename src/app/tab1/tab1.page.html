@@ -1,17 +1,75 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Tab 1
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="home-screen">
+  <div class="app-screen">
+    <section class="home-topbar">
+      <div>
+        <p class="eyebrow">Bonjour {{ userName }}</p>
+        <h1>Guide Touristique Intelligent</h1>
+      </div>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 1</ion-title>
-    </ion-toolbar>
-  </ion-header>
+      <button type="button" class="avatar-button" routerLink="/tabs/notifications">
+        <span>S</span>
+        <span class="avatar-badge">1</span>
+      </button>
+    </section>
 
-  <app-explore-container name="Tab 1 page"></app-explore-container>
+    <button type="button" class="search-card surface-card" routerLink="/tabs/map">
+      <ion-icon name="search-outline"></ion-icon>
+      <span>Rechercher un lieu...</span>
+      <ion-icon name="mic-outline"></ion-icon>
+    </button>
+
+    <div class="filter-row">
+      <span class="soft-pill" *ngFor="let filter of quickFilters">{{ filter }}</span>
+    </div>
+
+    <section class="section-heading">
+      <h2>Lieux populaires</h2>
+      <a routerLink="/tabs/map">Explorer</a>
+    </section>
+
+    <div class="places-grid">
+      <button
+        type="button"
+        class="place-card surface-card"
+        *ngFor="let place of featuredPlaces"
+        [routerLink]="['/tabs/place', place.id]"
+      >
+        <div class="place-card__visual scenic-visual" [ngClass]="place.theme">
+          <span class="visual-badge">{{ place.badge }}</span>
+          <span class="visual-icon">
+            <ion-icon [name]="place.icon"></ion-icon>
+          </span>
+        </div>
+
+        <div class="place-card__body">
+          <h3>{{ place.name }}</h3>
+          <p class="place-card__location">{{ place.location }}</p>
+
+          <div class="rating-text">
+            <span class="stars">{{ place.starsLabel }}</span>
+            <strong>{{ place.rating }}</strong>
+            <span>/ 5</span>
+          </div>
+
+          <p class="place-card__meta">{{ place.category }} · {{ place.reviewsLabel }}</p>
+        </div>
+      </button>
+    </div>
+
+    <button type="button" class="voice-banner" routerLink="/tabs/map">
+      <ion-icon name="mic-circle-outline"></ion-icon>
+      <div>
+        <strong>Recherche vocale</strong>
+        <span>Dites "Montre-moi Rabat"</span>
+      </div>
+      <ion-icon name="chevron-forward-outline"></ion-icon>
+    </button>
+
+    <section class="story-card glass-card">
+      <p class="eyebrow">Suggestion</p>
+      <h2>Journee famille a Rabat</h2>
+      <p>Combinez zoo, kasbah et pause gourmande avec un itineraire simple a suivre.</p>
+      <ion-button size="small" routerLink="/tabs/place/zoo-rabat">Voir la fiche</ion-button>
+    </section>
+  </div>
 </ion-content>

@@ -1,17 +1,52 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Tab 3
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="favorites-screen">
+  <div class="app-screen">
+    <section class="favorites-header">
+      <p class="eyebrow">Favoris</p>
+      <h1>Vos lieux inspires</h1>
+      <p class="header-copy">Gardez sous la main les destinations que vous voulez visiter plus tard.</p>
+    </section>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 3</ion-title>
-    </ion-toolbar>
-  </ion-header>
+    <section class="summary-strip">
+      <article class="summary-card glass-card">
+        <strong>03</strong>
+        <span>Lieux sauvegardes</span>
+      </article>
 
-  <app-explore-container name="Tab 3 page"></app-explore-container>
+      <article class="summary-card glass-card">
+        <strong>02</strong>
+        <span>Audio guides</span>
+      </article>
+    </section>
+
+    <button
+      type="button"
+      class="favorite-card surface-card"
+      *ngFor="let place of favoritePlaces"
+      [routerLink]="['/tabs/place', place.id]"
+    >
+      <div class="favorite-card__visual scenic-visual" [ngClass]="place.theme">
+        <span class="visual-badge">{{ place.badge }}</span>
+        <span class="visual-icon">
+          <ion-icon [name]="place.icon"></ion-icon>
+        </span>
+      </div>
+
+      <div class="favorite-card__content">
+        <div>
+          <h2>{{ place.name }}</h2>
+          <p>{{ place.shortDescription }}</p>
+        </div>
+
+        <div class="favorite-card__footer">
+          <div class="rating-text">
+            <span class="stars">{{ place.starsLabel }}</span>
+            <strong>{{ place.rating }}</strong>
+            <span>/ 5</span>
+          </div>
+
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
+      </div>
+    </button>
+  </div>
 </ion-content>

@@ -1,0 +1,30 @@
+<ion-content [fullscreen]="true" class="notifications-screen">
+  <div class="app-screen">
+    <section class="notifications-header">
+      <p class="eyebrow">Notifications</p>
+      <h1>Votre activite recente</h1>
+      <p class="header-copy">Retrouvez les suggestions, les mises a jour audio et les favoris synchronises.</p>
+    </section>
+
+    <section class="timeline surface-card">
+      <div class="section-heading">
+        <h2>Aujourd hui</h2>
+        <button type="button">Tout lire</button>
+      </div>
+
+      <article class="notification-card" *ngFor="let item of notifications" [class.notification-card--primary]="item.tone === 'primary'" [class.notification-card--secondary]="item.tone === 'secondary'" [class.notification-card--success]="item.tone === 'success'">
+        <div class="notification-card__icon">
+          <ion-icon [name]="item.icon"></ion-icon>
+        </div>
+
+        <div class="notification-card__copy">
+          <div class="notification-card__topline">
+            <h3>{{ item.title }}</h3>
+            <span>{{ item.time }}</span>
+          </div>
+          <p>{{ item.description }}</p>
+        </div>
+      </article>
+    </section>
+  </div>
+</ion-content>

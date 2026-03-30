@@ -1,17 +1,66 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>
-      Tab 2
-    </ion-title>
-  </ion-toolbar>
-</ion-header>
+<ion-content [fullscreen]="true" class="map-screen">
+  <div class="app-screen">
+    <section class="map-topbar">
+      <div>
+        <p class="eyebrow">Carte intelligente</p>
+        <h1>Explorez autour de vous</h1>
+      </div>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Tab 2</ion-title>
-    </ion-toolbar>
-  </ion-header>
+      <button type="button" class="icon-bubble">
+        <ion-icon name="locate-outline"></ion-icon>
+      </button>
+    </section>
 
-  <app-explore-container name="Tab 2 page"></app-explore-container>
+    <div class="map-filters">
+      <button
+        type="button"
+        *ngFor="let filter of filters"
+        [class.active]="selectedFilter === filter"
+        (click)="selectFilter(filter)"
+      >
+        {{ filter }}
+      </button>
+    </div>
+
+    <section class="map-canvas surface-card">
+      <div class="map-layer"></div>
+      <div class="map-route"></div>
+
+      <button
+        type="button"
+        class="map-marker"
+        *ngFor="let marker of markers"
+        [style.top.%]="marker.top"
+        [style.left.%]="marker.left"
+        [class.active]="selectedPlace.id === marker.place.id"
+        (click)="selectPlace(marker.place)"
+      >
+        <ion-icon name="location"></ion-icon>
+      </button>
+    </section>
+
+    <section class="selected-place surface-card">
+      <div class="selected-place__visual scenic-visual" [ngClass]="selectedPlace.theme">
+        <span class="visual-badge">{{ selectedPlace.badge }}</span>
+        <span class="visual-icon">
+          <ion-icon [name]="selectedPlace.icon"></ion-icon>
+        </span>
+      </div>
+
+      <div class="selected-place__content">
+        <h2>{{ selectedPlace.name }}</h2>
+        <p>{{ selectedPlace.spotlight }}</p>
+
+        <div class="rating-text">
+          <span class="stars">{{ selectedPlace.starsLabel }}</span>
+          <strong>{{ selectedPlace.rating }}</strong>
+          <span>/ 5</span>
+        </div>
+
+        <ion-button size="small" [routerLink]="['/tabs/place', selectedPlace.id]">
+          Voir details
+        </ion-button>
+      </div>
+    </section>
+  </div>
 </ion-content>

@@ -1,0 +1,110 @@
+<ion-content [fullscreen]="true" class="detail-screen" *ngIf="place">
+  <div class="app-screen detail-layout">
+    <section class="detail-topbar">
+      <button type="button" class="circle-button" (click)="goBack()">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+      </button>
+
+      <div class="detail-topbar__copy">
+        <p>{{ place.location }}</p>
+        <h1>{{ place.name }}</h1>
+      </div>
+
+      <button type="button" class="circle-button" routerLink="/tabs/map">
+        <ion-icon name="map-outline"></ion-icon>
+      </button>
+    </section>
+
+    <section class="hero-card surface-card">
+      <div class="hero-card__visual scenic-visual" [ngClass]="place.theme">
+        <span class="visual-badge">{{ place.badge }}</span>
+        <span class="visual-icon">
+          <ion-icon [name]="place.icon"></ion-icon>
+        </span>
+      </div>
+
+      <div class="hero-card__content">
+        <div class="rating-text">
+          <span class="stars">{{ place.starsLabel }}</span>
+          <strong>{{ place.rating }}</strong>
+          <span>/ 5</span>
+        </div>
+
+        <p>{{ place.longDescription }}</p>
+
+        <div class="highlight-row">
+          <span class="soft-pill" *ngFor="let highlight of place.highlights">{{ highlight }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="info-list surface-card">
+      <button type="button" class="info-row">
+        <span>Ratings</span>
+        <span>{{ place.rating }} / 5</span>
+      </button>
+
+      <button type="button" class="info-row">
+        <span>Horaires & acces</span>
+        <span>{{ place.hours }}</span>
+      </button>
+
+      <button type="button" class="info-row">
+        <span>Adresse</span>
+        <span>{{ place.address }}</span>
+      </button>
+    </section>
+
+    <section class="audio-card glass-card">
+      <div class="audio-card__header">
+        <div>
+          <p class="eyebrow">Audio guide</p>
+          <h2>Ecoutez la description audio</h2>
+        </div>
+        <ion-icon name="volume-high-outline"></ion-icon>
+      </div>
+
+      <div class="audio-wave">
+        <span *ngFor="let level of audioWave" [style.height.px]="level"></span>
+      </div>
+
+      <div class="audio-card__footer">
+        <span>02:15</span>
+        <ion-button size="small" routerLink="/tabs/map">Voir sur la carte</ion-button>
+      </div>
+    </section>
+
+    <section class="reviews surface-card">
+      <div class="section-heading">
+        <h2>Les avis ({{ place.reviewsCount }})</h2>
+      </div>
+
+      <article class="review-card" *ngFor="let review of reviews">
+        <div class="review-avatar">{{ review.avatar }}</div>
+
+        <div class="review-copy">
+          <div class="review-copy__top">
+            <div>
+              <h3>{{ review.author }}</h3>
+              <p>{{ review.role }}</p>
+            </div>
+            <span class="stars">{{ review.ratingLabel }}</span>
+          </div>
+
+          <p class="review-copy__body">{{ review.comment }}</p>
+
+          <div class="review-copy__meta">
+            <span>
+              <ion-icon name="thumbs-up-outline"></ion-icon>
+              {{ review.likes }}
+            </span>
+            <span>
+              <ion-icon name="chatbubble-outline"></ion-icon>
+              {{ review.replies }}
+            </span>
+          </div>
+        </div>
+      </article>
+    </section>
+  </div>
+</ion-content>

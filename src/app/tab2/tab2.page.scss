@@ -1,0 +1,151 @@
+.map-screen {
+  --background: transparent;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--ion-color-primary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.map-topbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 18px;
+
+  h1 {
+    margin: 8px 0 0;
+    font-size: 2rem;
+    font-weight: 800;
+  }
+}
+
+.icon-bubble {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  border: 1px solid rgba(111, 141, 173, 0.16);
+  background: rgba(255, 255, 255, 0.84);
+  display: grid;
+  place-items: center;
+  color: var(--ion-color-primary);
+  box-shadow: var(--app-shadow-card);
+
+  ion-icon {
+    font-size: 1.2rem;
+  }
+}
+
+.map-filters {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 18px;
+
+  button {
+    border: 0;
+    padding: 10px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.74);
+    color: var(--app-text-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+
+    &.active {
+      background: linear-gradient(135deg, #4a96eb 0%, #7ebdf7 100%);
+      color: #ffffff;
+      box-shadow: 0 14px 24px rgba(74, 150, 235, 0.24);
+    }
+  }
+}
+
+.map-canvas {
+  position: relative;
+  height: 360px;
+  overflow: hidden;
+}
+
+.map-layer {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 30%, rgba(126, 190, 152, 0.54), transparent 24%),
+    radial-gradient(circle at 74% 62%, rgba(113, 165, 214, 0.48), transparent 22%),
+    linear-gradient(135deg, #f7fafc 0%, #d9e7f5 100%);
+}
+
+.map-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent 0, transparent 32px, rgba(116, 147, 179, 0.14) 32px, rgba(116, 147, 179, 0.14) 34px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 32px, rgba(116, 147, 179, 0.14) 32px, rgba(116, 147, 179, 0.14) 34px);
+  opacity: 0.55;
+}
+
+.map-route {
+  position: absolute;
+  inset: 24% 18% 28% 16%;
+  border: 2px dashed rgba(74, 150, 235, 0.44);
+  border-radius: 999px;
+  transform: rotate(-14deg);
+}
+
+.map-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  border: 0;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: var(--ion-color-primary);
+  box-shadow: 0 16px 24px rgba(58, 87, 121, 0.18);
+
+  ion-icon {
+    font-size: 1.2rem;
+  }
+
+  &.active {
+    background: var(--ion-color-primary);
+    color: #ffffff;
+  }
+}
+
+.selected-place {
+  margin-top: 18px;
+  overflow: hidden;
+}
+
+.selected-place__visual {
+  height: 180px;
+}
+
+.selected-place__content {
+  padding: 18px;
+
+  h2 {
+    margin: 0;
+    font-size: 1.45rem;
+  }
+
+  p {
+    margin: 10px 0 12px;
+    color: var(--app-text-muted);
+    line-height: 1.55;
+  }
+
+  ion-button {
+    margin-top: 14px;
+    --border-radius: 16px;
+  }
+}

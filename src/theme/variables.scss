@@ -1,2 +1,37 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+:root {
+  --ion-color-primary: #2f80ed;
+  --ion-color-primary-rgb: 47, 128, 237;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #296fce;
+  --ion-color-primary-tint: #448df0;
+
+  --ion-color-secondary: #73b4ff;
+  --ion-color-secondary-rgb: 115, 180, 255;
+  --ion-color-secondary-contrast: #ffffff;
+  --ion-color-secondary-shade: #659ee0;
+  --ion-color-secondary-tint: #82bcff;
+
+  --ion-color-success: #5aa5e8;
+  --ion-color-success-rgb: 90, 165, 232;
+  --ion-color-success-contrast: #ffffff;
+  --ion-color-success-shade: #4f91cc;
+  --ion-color-success-tint: #6badeb;
+
+  --ion-background-color: #eef5ff;
+  --ion-text-color: #1d3557;
+  --ion-font-family: "Manrope", sans-serif;
+
+  --app-font-heading: "Outfit", sans-serif;
+  --app-font-body: "Manrope", sans-serif;
+  --app-page-bg: #eef5ff;
+  --app-page-gradient:
+    radial-gradient(circle at top right, rgba(156, 214, 255, 0.52), transparent 34%),
+    radial-gradient(circle at top left, rgba(110, 171, 255, 0.42), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, #e8f2ff 100%);
+  --app-surface: rgba(255, 255, 255, 0.92);
+  --app-surface-strong: #ffffff;
+  --app-border: rgba(105, 140, 184, 0.2);
+  --app-text-muted: #637b9c;
+  --app-shadow-soft: 0 24px 60px rgba(44, 86, 140, 0.18);
+  --app-shadow-card: 0 18px 34px rgba(62, 100, 150, 0.14);
+}

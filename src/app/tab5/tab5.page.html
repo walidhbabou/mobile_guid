@@ -1,0 +1,47 @@
+<ion-content [fullscreen]="true" class="profile-screen">
+  <div class="app-screen">
+    <section class="profile-card surface-card">
+      <div class="profile-card__top">
+        <div class="profile-avatar">S</div>
+
+        <div class="profile-copy">
+          <p class="eyebrow">Profil</p>
+          <h1>{{ userName }}</h1>
+          <p>{{ userEmail }}</p>
+        </div>
+      </div>
+
+      <div class="badge-row">
+        <span class="soft-pill" *ngFor="let badge of profileBadges">{{ badge }}</span>
+      </div>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card glass-card" *ngFor="let stat of profileStats">
+        <strong>{{ stat.value }}</strong>
+        <span>{{ stat.label }}</span>
+      </article>
+    </section>
+
+    <section class="actions surface-card">
+      <div class="section-heading">
+        <h2>Mon espace</h2>
+      </div>
+
+      <button type="button" class="action-row" *ngFor="let action of profileActions">
+        <div class="action-row__icon">
+          <ion-icon [name]="action.icon"></ion-icon>
+        </div>
+        <div class="action-row__copy">
+          <h3>{{ action.title }}</h3>
+          <p>{{ action.subtitle }}</p>
+        </div>
+        <ion-icon name="chevron-forward-outline"></ion-icon>
+      </button>
+    </section>
+
+    <ion-button expand="block" class="logout-button" routerLink="/auth/login" (click)="logout()">
+      Se deconnecter
+    </ion-button>
+  </div>
+</ion-content>
