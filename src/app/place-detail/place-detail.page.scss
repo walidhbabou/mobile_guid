@@ -51,7 +51,15 @@
 }
 
 .hero-card__visual {
+  position: relative;
   height: 240px;
+}
+
+.hero-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .hero-card__content {
@@ -218,5 +226,28 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+  }
+}
+
+.review-empty,
+.missing-place-state {
+  h1,
+  h3 {
+    margin: 0;
+  }
+
+  p {
+    margin: 10px 0 0;
+    color: var(--app-text-muted);
+    line-height: 1.55;
+  }
+}
+
+.missing-place-state {
+  padding: 20px;
+
+  ion-button {
+    margin-top: 16px;
+    --border-radius: 16px;
   }
 }

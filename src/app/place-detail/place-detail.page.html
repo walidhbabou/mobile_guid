@@ -1,13 +1,13 @@
-<ion-content [fullscreen]="true" class="detail-screen" *ngIf="place">
-  <div class="app-screen detail-layout">
+<ion-content [fullscreen]="true" class="detail-screen">
+  <div class="app-screen detail-layout" *ngIf="place as currentPlace; else missingPlaceState">
     <section class="detail-topbar">
       <button type="button" class="circle-button" (click)="goBack()">
         <ion-icon name="chevron-back-outline"></ion-icon>
       </button>
 
       <div class="detail-topbar__copy">
-        <p>{{ place.location }}</p>
-        <h1>{{ place.name }}</h1>
+        <p>{{ currentPlace.location }}</p>
+        <h1>{{ currentPlace.name }}</h1>
       </div>
 
       <button type="button" class="circle-button" routerLink="/tabs/map">
@@ -16,24 +16,32 @@
     </section>
 
     <section class="hero-card surface-card">
-      <div class="hero-card__visual scenic-visual" [ngClass]="place.theme">
-        <span class="visual-badge">{{ place.badge }}</span>
+      <div class="hero-card__visual scenic-visual" [ngClass]="currentPlace.theme">
+        <img
+          *ngIf="currentPlace.imageUrl"
+          class="hero-card__image"
+          [src]="currentPlace.imageUrl"
+          [alt]="currentPlace.name"
+          loading="lazy"
+          decoding="async"
+        />
+        <span class="visual-badge">{{ currentPlace.badge }}</span>
         <span class="visual-icon">
-          <ion-icon [name]="place.icon"></ion-icon>
+          <ion-icon [name]="currentPlace.icon"></ion-icon>
         </span>
       </div>
 
       <div class="hero-card__content">
         <div class="rating-text">
-          <span class="stars">{{ place.starsLabel }}</span>
-          <strong>{{ place.rating }}</strong>
+          <span class="stars">{{ currentPlace.starsLabel }}</span>
+          <strong>{{ currentPlace.rating }}</strong>
           <span>/ 5</span>
         </div>
 
-        <p>{{ place.longDescription }}</p>
+        <p>{{ currentPlace.longDescription }}</p>
 
         <div class="highlight-row">
-          <span class="soft-pill" *ngFor="let highlight of place.highlights">{{ highlight }}</span>
+          <span class="soft-pill" *ngFor="let highlight of currentPlace.highlights">{{ highlight }}</span>
         </div>
       </div>
     </section>
@@ -41,17 +49,17 @@
     <section class="info-list surface-card">
       <button type="button" class="info-row">
         <span>Ratings</span>
-        <span>{{ place.rating }} / 5</span>
+        <span>{{ currentPlace.rating }} / 5</span>
       </button>
 
       <button type="button" class="info-row">
         <span>Horaires & acces</span>
-        <span>{{ place.hours }}</span>
+        <span>{{ currentPlace.hours }}</span>
       </button>
 
       <button type="button" class="info-row">
         <span>Adresse</span>
-        <span>{{ place.address }}</span>
+        <span>{{ currentPlace.address }}</span>
       </button>
     </section>
 
@@ -76,35 +84,54 @@
 
     <section class="reviews surface-card">
       <div class="section-heading">
-        <h2>Les avis ({{ place.reviewsCount }})</h2>
+        <h2>Les avis ({{ currentPlace.reviewsCount }})</h2>
       </div>
 
-      <article class="review-card" *ngFor="let review of reviews">
-        <div class="review-avatar">{{ review.avatar }}</div>
+      <ng-container *ngIf="reviews.length; else reviewFallback">
+        <article class="review-card" *ngFor="let review of reviews">
+          <div class="review-avatar">{{ review.avatar }}</div>
 
-        <div class="review-copy">
-          <div class="review-copy__top">
-            <div>
-              <h3>{{ review.author }}</h3>
-              <p>{{ review.role }}</p>
+          <div class="review-copy">
+            <div class="review-copy__top">
+              <div>
+                <h3>{{ review.author }}</h3>
+                <p>{{ review.role }}</p>
+              </div>
+              <span class="stars">{{ review.ratingLabel }}</span>
             </div>
-            <span class="stars">{{ review.ratingLabel }}</span>
-          </div>
 
-          <p class="review-copy__body">{{ review.comment }}</p>
+            <p class="review-copy__body">{{ review.comment }}</p>
 
-          <div class="review-copy__meta">
-            <span>
-              <ion-icon name="thumbs-up-outline"></ion-icon>
-              {{ review.likes }}
-            </span>
-            <span>
-              <ion-icon name="chatbubble-outline"></ion-icon>
-              {{ review.replies }}
-            </span>
+            <div class="review-copy__meta">
+              <span>
+                <ion-icon name="thumbs-up-outline"></ion-icon>
+                {{ review.likes }}
+              </span>
+              <span>
+                <ion-icon name="chatbubble-outline"></ion-icon>
+                {{ review.replies }}
+              </span>
+            </div>
           </div>
+        </article>
+      </ng-container>
+
+      <ng-template #reviewFallback>
+        <div class="review-empty">
+          <h3>{{ currentPlace.category }}</h3>
+          <p>Aucun avis detaille n est fourni par l API pour ce lieu. Utilisez la carte ou le lien Google Maps pour poursuivre la visite.</p>
         </div>
-      </article>
+      </ng-template>
     </section>
   </div>
+
+  <ng-template #missingPlaceState>
+    <div class="app-screen detail-layout">
+      <section class="hero-card surface-card missing-place-state">
+        <h1>Lieu introuvable</h1>
+        <p>Cette fiche n a pas pu etre chargee a partir des donnees dynamiques.</p>
+        <ion-button size="small" routerLink="/tabs/map">Retour a la carte</ion-button>
+      </section>
+    </div>
+  </ng-template>
 </ion-content>

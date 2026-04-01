@@ -8,45 +8,62 @@
 
     <section class="summary-strip">
       <article class="summary-card glass-card">
-        <strong>03</strong>
-        <span>Lieux sauvegardes</span>
+        <strong>{{ viewedPlacesCount }}</strong>
+        <span>Lieux visibles</span>
       </article>
 
       <article class="summary-card glass-card">
-        <strong>02</strong>
-        <span>Audio guides</span>
+        <strong>{{ coveredCitiesCount }}</strong>
+        <span>Villes couvertes</span>
       </article>
     </section>
 
-    <button
-      type="button"
-      class="favorite-card surface-card"
-      *ngFor="let place of favoritePlaces"
-      [routerLink]="['/tabs/place', place.id]"
-    >
-      <div class="favorite-card__visual scenic-visual" [ngClass]="place.theme">
-        <span class="visual-badge">{{ place.badge }}</span>
-        <span class="visual-icon">
-          <ion-icon [name]="place.icon"></ion-icon>
-        </span>
-      </div>
-
-      <div class="favorite-card__content">
-        <div>
-          <h2>{{ place.name }}</h2>
-          <p>{{ place.shortDescription }}</p>
+    <ng-container *ngIf="favoritePlaces.length; else emptyFavoritesState">
+      <button
+        type="button"
+        class="favorite-card surface-card"
+        *ngFor="let place of favoritePlaces"
+        [routerLink]="['/tabs/place', place.id]"
+      >
+        <div class="favorite-card__visual scenic-visual" [ngClass]="place.theme">
+          <img
+            *ngIf="place.imageUrl"
+            class="favorite-card__image"
+            [src]="place.imageUrl"
+            [alt]="place.name"
+            loading="lazy"
+            decoding="async"
+          />
+          <span class="visual-badge">{{ place.badge }}</span>
+          <span class="visual-icon">
+            <ion-icon [name]="place.icon"></ion-icon>
+          </span>
         </div>
 
-        <div class="favorite-card__footer">
-          <div class="rating-text">
-            <span class="stars">{{ place.starsLabel }}</span>
-            <strong>{{ place.rating }}</strong>
-            <span>/ 5</span>
+        <div class="favorite-card__content">
+          <div>
+            <h2>{{ place.name }}</h2>
+            <p>{{ place.shortDescription }}</p>
           </div>
 
-          <ion-icon name="chevron-forward-outline"></ion-icon>
+          <div class="favorite-card__footer">
+            <div class="rating-text">
+              <span class="stars">{{ place.starsLabel }}</span>
+              <strong>{{ place.rating }}</strong>
+              <span>/ 5</span>
+            </div>
+
+            <ion-icon name="chevron-forward-outline"></ion-icon>
+          </div>
         </div>
-      </div>
-    </button>
+      </button>
+    </ng-container>
+
+    <ng-template #emptyFavoritesState>
+      <section class="surface-card empty-favorites-state">
+        <h2>Pas encore de lieu consulte</h2>
+        <p>Ouvrez une fiche detaillee ou lancez une recherche pour voir apparaitre vos lieux recents ici.</p>
+      </section>
+    </ng-template>
   </div>
 </ion-content>

@@ -12,10 +12,115 @@
       </button>
     </section>
 
+    <section class="ai-search-card surface-card">
+      <div class="ai-search-card__header">
+        <div>
+          <p class="eyebrow">Recherche IA</p>
+          <h2>Trouvez le lieu qu il vous faut</h2>
+        </div>
+
+        <span class="soft-pill">ai-place-service</span>
+      </div>
+
+      <div class="ai-search-shell">
+        <ion-icon name="sparkles-outline"></ion-icon>
+        <ion-input
+          [(ngModel)]="searchQuery"
+          type="text"
+          placeholder="Ex: une plage calme a Agadir ou une sortie famille a Rabat"
+          (keyup.enter)="searchWithAi()"
+        ></ion-input>
+
+        <button
+          type="button"
+          class="ai-search-button"
+          (click)="searchWithAi()"
+          [disabled]="isSearching || !searchQuery.trim()"
+        >
+          <ion-spinner *ngIf="isSearching" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!isSearching" name="arrow-forward-outline"></ion-icon>
+        </button>
+      </div>
+
+      <div class="ai-search-suggestions">
+        <button
+          type="button"
+          class="soft-pill"
+          *ngFor="let prompt of suggestedPrompts"
+          (click)="useSuggestedPrompt(prompt)"
+        >
+          {{ prompt }}
+        </button>
+      </div>
+    </section>
+
+    <section class="ai-results-section" *ngIf="hasSearched">
+      <div class="section-heading">
+        <h2>Resultats {{ searchMode === 'ai' ? 'IA' : 'suggeres' }}</h2>
+        <button type="button" (click)="clearSearch()">Effacer</button>
+      </div>
+
+      <p class="ai-search-note" *ngIf="searchMode === 'fallback' && searchResults.length">
+        ai-place-service n a pas repondu pour cette recherche. L app affiche des suggestions locales proches de votre besoin.
+      </p>
+
+      <div class="ai-results-grid" *ngIf="searchResults.length; else emptySearchState">
+        <article class="ai-result-card surface-card" *ngFor="let result of searchResults">
+          <div class="ai-result-card__visual scenic-visual" [ngClass]="result.theme || 'theme-rabat'">
+            <img
+              *ngIf="result.imageUrl"
+              class="ai-result-card__image"
+              [src]="result.imageUrl"
+              [alt]="result.name"
+              loading="lazy"
+              decoding="async"
+              (error)="handleResultImageError(result)"
+            />
+
+            <span class="visual-badge">{{ result.visualBadge || result.category }}</span>
+            <span class="visual-icon">
+              <ion-icon [name]="result.visualIcon || 'image-outline'"></ion-icon>
+            </span>
+          </div>
+
+          <div class="ai-result-card__body">
+            <div class="ai-result-card__meta">
+              <span class="soft-pill">{{ result.category }}</span>
+              <span class="rating-text" *ngIf="result.rating">
+                <strong>{{ result.rating }}</strong>
+                <span>/ 5</span>
+              </span>
+            </div>
+
+            <h3>{{ result.name }}</h3>
+            <p class="ai-result-card__location">{{ result.location }}</p>
+            <p class="ai-result-card__description">{{ result.description }}</p>
+
+            <div class="ai-result-card__actions">
+              <ion-button *ngIf="result.routeId" size="small" [routerLink]="['/tabs/place', result.routeId]">
+                Voir la fiche
+              </ion-button>
+              <ion-button size="small" fill="outline" routerLink="/tabs/map">
+                Voir la carte
+              </ion-button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #emptySearchState>
+        <div class="empty-ai-state surface-card">
+          <ion-icon name="search-outline"></ion-icon>
+          <h3>Aucun lieu trouve</h3>
+          <p>Essayez une recherche plus simple, par exemple "culture a Rabat" ou "plage a Agadir".</p>
+        </div>
+      </ng-template>
+    </section>
+
     <button type="button" class="search-card surface-card" routerLink="/tabs/map">
       <ion-icon name="search-outline"></ion-icon>
-      <span>Rechercher un lieu...</span>
-      <ion-icon name="mic-outline"></ion-icon>
+      <span>Explorer tous les lieux sur la carte</span>
+      <ion-icon name="map-outline"></ion-icon>
     </button>
 
     <div class="filter-row">
@@ -51,7 +156,7 @@
             <span>/ 5</span>
           </div>
 
-          <p class="place-card__meta">{{ place.category }} · {{ place.reviewsLabel }}</p>
+          <p class="place-card__meta">{{ place.category }} - {{ place.reviewsLabel }}</p>
         </div>
       </button>
     </div>
@@ -65,11 +170,11 @@
       <ion-icon name="chevron-forward-outline"></ion-icon>
     </button>
 
-    <section class="story-card glass-card">
+    <section class="story-card glass-card" *ngIf="highlightPlace as place">
       <p class="eyebrow">Suggestion</p>
-      <h2>Journee famille a Rabat</h2>
-      <p>Combinez zoo, kasbah et pause gourmande avec un itineraire simple a suivre.</p>
-      <ion-button size="small" routerLink="/tabs/place/zoo-rabat">Voir la fiche</ion-button>
+      <h2>{{ place.name }}</h2>
+      <p>{{ place.shortDescription }}</p>
+      <ion-button size="small" [routerLink]="['/tabs/place', place.id]">Voir la fiche</ion-button>
     </section>
   </div>
 </ion-content>

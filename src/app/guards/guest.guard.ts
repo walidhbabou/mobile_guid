@@ -1,9 +1,10 @@
 import { inject } from '@angular/core';
 import { CanMatchFn, Router, UrlTree } from '@angular/router';
+import { TokenService } from '../services/token.service';
 
 export const guestGuard: CanMatchFn = (): boolean | UrlTree => {
   const router = inject(Router);
-  const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+  const tokenService = inject(TokenService);
 
-  return isLoggedIn ? router.createUrlTree(['/tabs/home']) : true;
+  return tokenService.isAuthenticated() ? router.createUrlTree(['/tabs/home']) : true;
 };

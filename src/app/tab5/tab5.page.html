@@ -2,7 +2,7 @@
   <div class="app-screen">
     <section class="profile-card surface-card">
       <div class="profile-card__top">
-        <div class="profile-avatar">S</div>
+        <div class="profile-avatar">{{ userInitial }}</div>
 
         <div class="profile-copy">
           <p class="eyebrow">Profil</p>
@@ -11,7 +11,7 @@
         </div>
       </div>
 
-      <div class="badge-row">
+      <div class="badge-row" *ngIf="profileBadges.length">
         <span class="soft-pill" *ngFor="let badge of profileBadges">{{ badge }}</span>
       </div>
     </section>
@@ -23,7 +23,7 @@
       </article>
     </section>
 
-    <section class="actions surface-card">
+    <section class="actions surface-card" *ngIf="profileActions.length">
       <div class="section-heading">
         <h2>Mon espace</h2>
       </div>

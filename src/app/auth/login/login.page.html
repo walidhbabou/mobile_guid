@@ -1,26 +1,48 @@
 <ion-content [fullscreen]="true" class="auth-screen">
   <div class="auth-shell">
+    <div class="auth-ambient" aria-hidden="true">
+      <span class="auth-ambient__orb auth-ambient__orb--one"></span>
+      <span class="auth-ambient__orb auth-ambient__orb--two"></span>
+      <span class="auth-ambient__orb auth-ambient__orb--three"></span>
+    </div>
+
     <section class="auth-hero">
-      <div class="auth-hero__backdrop scenic-visual theme-chefchaouen">
+      <div class="auth-hero__backdrop scenic-visual">
         <div class="auth-hero__copy">
-          <span class="hero-tag">Guide smart</span>
-          <h1>Bienvenue !</h1>
-          <p>Guide Touristique Intelligent pour vos sorties au Maroc.</p>
+          <span class="hero-tag">Guide smart premium</span>
+          <h1>Une connexion qui donne envie de voyager.</h1>
+          <p>Retrouvez vos parcours, vos favoris et vos recommandations avec une experience plus elegante et plus vivante.</p>
+        </div>
+
+        <div class="hero-metrics">
+          <article class="hero-metric hero-metric--glass">
+            <strong>24/7</strong>
+            <span>Suggestions intelligentes</span>
+          </article>
+
+          <article class="hero-metric hero-metric--accent">
+            <ion-icon name="sparkles-outline"></ion-icon>
+            <div>
+              <strong>120+</strong>
+              <span>Itineraires inspires</span>
+            </div>
+          </article>
         </div>
 
         <div class="hero-highlights">
-          <span>Chefchaouen</span>
-          <span>Rabat</span>
-          <span>Agadir</span>
+          <span><ion-icon name="location-outline"></ion-icon>Chefchaouen</span>
+          <span><ion-icon name="compass-outline"></ion-icon>Rabat</span>
+          <span><ion-icon name="sunny-outline"></ion-icon>Agadir</span>
         </div>
       </div>
     </section>
 
     <section class="auth-card surface-card">
       <div class="auth-card__header">
-        <div>
+        <div class="auth-card__headline">
           <p class="eyebrow">Connexion</p>
           <h2>Reprenez votre exploration</h2>
+          <p>Profitez d un acces rapide, securise et plus immersif des votre arrivee sur l application.</p>
         </div>
 
         <button type="button" class="demo-link" (click)="fillDemoAccount()">
@@ -28,15 +50,21 @@
         </button>
       </div>
 
+      <div class="auth-trustbar">
+        <span><ion-icon name="shield-checkmark-outline"></ion-icon>Securise</span>
+        <span><ion-icon name="flash-outline"></ion-icon>Fluide</span>
+        <span><ion-icon name="earth-outline"></ion-icon>100% Maroc</span>
+      </div>
+
       <form [formGroup]="loginForm" (ngSubmit)="login()" class="auth-form">
         <label class="field">
-          <span class="field__label">Adresse e-mail</span>
+          <span class="field__label">Email ou nom d utilisateur</span>
           <div class="field__shell">
             <ion-icon name="mail-outline"></ion-icon>
-            <ion-input formControlName="email" type="email" placeholder="sophie@guide.ma"></ion-input>
+            <ion-input formControlName="identifier" type="text" placeholder="sophie@guide.ma ou user"></ion-input>
           </div>
-          <small class="error-text" *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
-            Entrez une adresse valide.
+          <small class="error-text" *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched">
+            Entrez votre email ou votre nom d utilisateur.
           </small>
         </label>
 
@@ -47,14 +75,14 @@
             <ion-input
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
-              placeholder="123456"
+              placeholder="2002"
             ></ion-input>
             <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
               <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
           <small class="error-text" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
-            Utilisez au moins 6 caracteres.
+            Utilisez au moins 4 caracteres.
           </small>
         </label>
 

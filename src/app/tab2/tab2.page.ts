@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
-import { MAP_FILTERS, MAP_MARKERS, MAP_PLACES, Place, getPlaceById } from '../data/tourism.data';
+import { Place } from '../data/tourism.data';
+import { PlaceCatalogService, PlaceMarker } from '../services/place-catalog.service';
 
 @Component({
   selector: 'app-tab2',
@@ -8,20 +9,64 @@ import { MAP_FILTERS, MAP_MARKERS, MAP_PLACES, Place, getPlaceById } from '../da
   standalone: false,
 })
 export class Tab2Page {
-  readonly filters = MAP_FILTERS;
-  readonly markers = MAP_MARKERS.map((marker) => ({
-    ...marker,
-    place: getPlaceById(marker.placeId),
-  }));
+  filters: string[] = [];
+  allPlaces: Place[] = [];
+  markers: PlaceMarker[] = [];
+  selectedFilter = 'Tout';
+  selectedPlace: Place | null = null;
 
-  selectedFilter = this.filters[0];
-  selectedPlace: Place = MAP_PLACES[1];
+  constructor(private placeCatalogService: PlaceCatalogService) {}
+
+  ionViewWillEnter() {
+    this.loadMapContent();
+  }
 
   selectFilter(filter: string) {
     this.selectedFilter = filter;
+    this.applyFilter();
   }
 
   selectPlace(place: Place) {
     this.selectedPlace = place;
+  }
+
+  private loadMapContent() {
+    this.placeCatalogService.getPlaces().subscribe((places: Place[]) => {
+      this.allPlaces = places;
+      this.filters = this.buildFilters(places);
+
+      if (!this.filters.includes(this.selectedFilter)) {
+        this.selectedFilter = this.filters[0] ?? 'Tout';
+      }
+
+      this.applyFilter();
+    });
+  }
+
+  private applyFilter() {
+    const filteredPlaces = this.placeCatalogService.filterPlaces(this.allPlaces, this.selectedFilter);
+    this.markers = this.placeCatalogService.buildMarkers(filteredPlaces);
+
+    if (!filteredPlaces.length) {
+      this.selectedPlace = null;
+      return;
+    }
+
+    if (!this.selectedPlace || !filteredPlaces.some((place: Place) => place.id === this.selectedPlace?.id)) {
+      this.selectedPlace = filteredPlaces[0];
+      return;
+    }
+
+    this.selectedPlace = filteredPlaces.find((place: Place) => place.id === this.selectedPlace?.id) ?? filteredPlaces[0];
+  }
+
+  private buildFilters(places: Place[]): string[] {
+    const categories = Array.from(new Set(
+      places
+        .map((place: Place) => place.category)
+        .filter((category: string) => category.trim().length > 0)
+    ));
+
+    return ['Tout', ...categories.slice(0, 6)];
   }
 }

@@ -1,12 +1,10 @@
 import { NgModule } from '@angular/core';
 import { PreloadAllModules, RouterModule, Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
-import { guestGuard } from './guards/guest.guard';
 
 const routes: Routes = [
   {
     path: 'auth',
-    canMatch: [guestGuard],
     loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule)
   },
   {
@@ -16,7 +14,7 @@ const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: '/tabs/home',
+    redirectTo: '/auth/login',
     pathMatch: 'full',
   },
   {

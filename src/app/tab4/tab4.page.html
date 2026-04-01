@@ -12,19 +12,37 @@
         <button type="button">Tout lire</button>
       </div>
 
-      <article class="notification-card" *ngFor="let item of notifications" [class.notification-card--primary]="item.tone === 'primary'" [class.notification-card--secondary]="item.tone === 'secondary'" [class.notification-card--success]="item.tone === 'success'">
-        <div class="notification-card__icon">
-          <ion-icon [name]="item.icon"></ion-icon>
-        </div>
-
-        <div class="notification-card__copy">
-          <div class="notification-card__topline">
-            <h3>{{ item.title }}</h3>
-            <span>{{ item.time }}</span>
+      <ng-container *ngIf="notifications.length; else emptyNotificationsState">
+        <article class="notification-card" *ngFor="let item of notifications" [class.notification-card--primary]="item.tone === 'primary'" [class.notification-card--secondary]="item.tone === 'secondary'" [class.notification-card--success]="item.tone === 'success'">
+          <div class="notification-card__icon">
+            <ion-icon [name]="item.icon"></ion-icon>
           </div>
-          <p>{{ item.description }}</p>
-        </div>
-      </article>
+
+          <div class="notification-card__copy">
+            <div class="notification-card__topline">
+              <h3>{{ item.title }}</h3>
+              <span>{{ item.time }}</span>
+            </div>
+            <p>{{ item.description }}</p>
+          </div>
+        </article>
+      </ng-container>
+
+      <ng-template #emptyNotificationsState>
+        <article class="notification-card notification-card--secondary">
+          <div class="notification-card__icon">
+            <ion-icon name="notifications-off-outline"></ion-icon>
+          </div>
+
+          <div class="notification-card__copy">
+            <div class="notification-card__topline">
+              <h3>Aucune notification</h3>
+              <span>En attente</span>
+            </div>
+            <p>Les mises a jour apparaitront ici a partir des lieux reellement charges par l application.</p>
+          </div>
+        </article>
+      </ng-template>
     </section>
   </div>
 </ion-content>

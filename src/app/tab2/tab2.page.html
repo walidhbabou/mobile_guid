@@ -32,35 +32,52 @@
         *ngFor="let marker of markers"
         [style.top.%]="marker.top"
         [style.left.%]="marker.left"
-        [class.active]="selectedPlace.id === marker.place.id"
+        [class.active]="selectedPlace?.id === marker.place.id"
         (click)="selectPlace(marker.place)"
       >
         <ion-icon name="location"></ion-icon>
       </button>
     </section>
 
-    <section class="selected-place surface-card">
-      <div class="selected-place__visual scenic-visual" [ngClass]="selectedPlace.theme">
-        <span class="visual-badge">{{ selectedPlace.badge }}</span>
+    <section class="selected-place surface-card" *ngIf="selectedPlace as place; else emptyMapState">
+      <div class="selected-place__visual scenic-visual" [ngClass]="place.theme">
+        <img
+          *ngIf="place.imageUrl"
+          class="selected-place__image"
+          [src]="place.imageUrl"
+          [alt]="place.name"
+          loading="lazy"
+          decoding="async"
+        />
+        <span class="visual-badge">{{ place.badge }}</span>
         <span class="visual-icon">
-          <ion-icon [name]="selectedPlace.icon"></ion-icon>
+          <ion-icon [name]="place.icon"></ion-icon>
         </span>
       </div>
 
       <div class="selected-place__content">
-        <h2>{{ selectedPlace.name }}</h2>
-        <p>{{ selectedPlace.spotlight }}</p>
+        <h2>{{ place.name }}</h2>
+        <p>{{ place.spotlight }}</p>
 
         <div class="rating-text">
-          <span class="stars">{{ selectedPlace.starsLabel }}</span>
-          <strong>{{ selectedPlace.rating }}</strong>
+          <span class="stars">{{ place.starsLabel }}</span>
+          <strong>{{ place.rating }}</strong>
           <span>/ 5</span>
         </div>
 
-        <ion-button size="small" [routerLink]="['/tabs/place', selectedPlace.id]">
+        <ion-button size="small" [routerLink]="['/tabs/place', place.id]">
           Voir details
         </ion-button>
       </div>
     </section>
+
+    <ng-template #emptyMapState>
+      <section class="selected-place surface-card">
+        <div class="selected-place__content">
+          <h2>Aucun lieu a afficher</h2>
+          <p>La carte se remplira automatiquement des que l API renvoie des lieux exploitables.</p>
+        </div>
+      </section>
+    </ng-template>
   </div>
 </ion-content>

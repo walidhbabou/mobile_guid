@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ToastController } from '@ionic/angular';
+import { firstValueFrom } from 'rxjs';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-signup',
@@ -18,7 +20,8 @@ export class SignupPage implements OnInit {
   constructor(
     private formBuilder: FormBuilder,
     private router: Router,
-    private toastController: ToastController
+    private toastController: ToastController,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -56,17 +59,38 @@ export class SignupPage implements OnInit {
 
     this.isLoading = true;
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
       const formValue = this.signupForm.getRawValue();
-      localStorage.setItem('userEmail', formValue.email);
-      localStorage.setItem('userName', `${formValue.firstName} ${formValue.lastName}`);
-      localStorage.setItem('isLoggedIn', 'true');
+      const email = (formValue.email || '').trim().toLowerCase();
+      const fullName = this.buildFullName(formValue.firstName, formValue.lastName);
+
+      await firstValueFrom(
+        this.authService.signup({
+          username: email,
+          email,
+          password: formValue.password,
+          fullName,
+        })
+      );
+
+      const response = await firstValueFrom(
+        this.authService.login({
+          username: email,
+          password: formValue.password,
+        })
+      );
+
+      this.authService.storeUserProfile(
+        response.email || email,
+        response.fullName || fullName
+      );
 
       await this.showToast('Inscription reussie, votre guide est pret.', 'success');
-      await this.router.navigate(['/tabs/home']);
+      await this.router.navigateByUrl('/tabs/home', { replaceUrl: true });
     } catch (error) {
-      await this.showToast('Erreur lors de l inscription.', 'danger');
+      await this.showToast(
+        this.resolveErrorMessage(error, 'Erreur lors de l inscription.'),
+        'danger'
+      );
     } finally {
       this.isLoading = false;
     }
@@ -81,7 +105,17 @@ export class SignupPage implements OnInit {
   }
 
   goToLogin() {
-    this.router.navigate(['/auth/login']);
+    void this.router.navigateByUrl('/auth/login');
+  }
+
+  private buildFullName(firstName: string, lastName: string): string {
+    return `${firstName || ''} ${lastName || ''}`.trim() || 'Nouvel utilisateur';
+  }
+
+  private resolveErrorMessage(error: unknown, fallback: string): string {
+    const apiError = error as { error?: string; message?: string };
+
+    return apiError?.error || apiError?.message || fallback;
   }
 
   private async showToast(message: string, color: string) {
