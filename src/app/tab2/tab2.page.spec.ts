@@ -59,7 +59,6 @@ describe('Tab2Page', () => {
 
     fixture = TestBed.createComponent(Tab2Page);
     component = fixture.componentInstance;
-    fixture.detectChanges();
   });
 
   it('should create', () => {

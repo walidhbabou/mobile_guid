@@ -39,7 +39,7 @@ export class PlaceCatalogService {
       return of(null);
     }
 
-    return this.apiService.get(`/api/places/by-place-id/${encodeURIComponent(normalizedId)}`).pipe(
+    return this.apiService.getPlaceById(normalizedId).pipe(
       map((response: unknown) => this.normalizePlace(response)),
       catchError(() => this.getPlaces().pipe(
         map((places: Place[]) => places.find((place: Place) => place.id === normalizedId) ?? null)

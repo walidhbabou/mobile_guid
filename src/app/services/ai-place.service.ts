@@ -50,27 +50,15 @@ export class AiPlaceService {
   }
 
   searchFromAudio(audio: Blob, options: AiSearchRequestOptions = {}): Observable<AiPlaceSearchExperience> {
-    const params = new URLSearchParams();
     const normalizedLanguage = this.normalizeLanguage(options.language);
-
-    if (typeof options.userLatitude === 'number') {
-      params.set('user_latitude', String(options.userLatitude));
-    }
-
-    if (typeof options.userLongitude === 'number') {
-      params.set('user_longitude', String(options.userLongitude));
-    }
-
-    if (normalizedLanguage) {
-      params.set('language', normalizedLanguage);
-    }
-
-    const queryString = params.toString();
-    const endpoint = `/api/morocco-ai/search/audio${queryString ? `?${queryString}` : ''}`;
-    const attempts = ['audio', 'file', 'audio_file'].map((fieldName: string) => (
+    const endpoints = [
+      '/api/morocco-ai/search/audio',
+      '/api/ai/search/audio',
+    ];
+    const attempts = endpoints.map((endpoint: string) => (
       () => this.apiService.postFormData(
         endpoint,
-        this.buildAudioFormData(audio, fieldName, options, normalizedLanguage)
+        this.buildAudioFormData(audio, options, normalizedLanguage)
       )
     ));
 
@@ -88,12 +76,32 @@ export class AiPlaceService {
     lastError?: unknown
   ): Observable<unknown> {
     if (index >= attempts.length) {
-      return throwError(() => lastError instanceof Error ? lastError : new Error('Aucun endpoint ai-place-service disponible.'));
+      return throwError(() => lastError ?? new Error('Aucun endpoint ai-place-service disponible.'));
     }
 
     return attempts[index]().pipe(
-      catchError((error: unknown) => this.tryRequest(attempts, index + 1, error))
+      catchError((error: unknown) => {
+        if (!this.shouldRetryAttempt(error) || index === attempts.length - 1) {
+          return throwError(() => error);
+        }
+
+        return this.tryRequest(attempts, index + 1, lastError ?? error);
+      })
     );
+  }
+
+  private shouldRetryAttempt(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('status' in error)) {
+      return true;
+    }
+
+    const status = (error as { status?: unknown }).status;
+
+    if (typeof status !== 'number') {
+      return true;
+    }
+
+    return status === 0 || status === 404 || status >= 500;
   }
 
   private normalizeExperience(
@@ -336,18 +344,16 @@ export class AiPlaceService {
 
   private buildAudioFormData(
     audio: Blob,
-    fieldName: string,
     options: AiSearchRequestOptions,
     normalizedLanguage?: string
   ): FormData {
     const formData = new FormData();
     const filename = `voice-query-${Date.now()}.${this.resolveAudioExtension(audio.type)}`;
 
-    formData.append(fieldName, audio, filename);
+    formData.append('audio', audio, filename);
 
     if (normalizedLanguage) {
       formData.append('language', normalizedLanguage);
-      formData.append('lang', normalizedLanguage);
     }
 
     if (typeof options.userLatitude === 'number') {

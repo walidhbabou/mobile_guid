@@ -5,9 +5,48 @@ import { AiPlaceService } from '../services/ai-place.service';
 import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
 import { PlaceCatalogService, PlaceMarker } from '../services/place-catalog.service';
 
+interface BrowserSpeechRecognitionAlternative {
+  transcript?: string;
+}
+
+interface BrowserSpeechRecognitionResult {
+  isFinal?: boolean;
+  length: number;
+  [index: number]: BrowserSpeechRecognitionAlternative;
+}
+
+interface BrowserSpeechRecognitionResultList {
+  length: number;
+  [index: number]: BrowserSpeechRecognitionResult;
+}
+
+interface BrowserSpeechRecognitionEvent {
+  results: BrowserSpeechRecognitionResultList;
+}
+
+interface BrowserSpeechRecognitionErrorEvent {
+  error?: string;
+}
+
+interface BrowserSpeechRecognition {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart: (() => void) | null;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
 declare global {
   interface Window {
     google?: any;
+    SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+    webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
   }
 }
 
@@ -41,9 +80,21 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
   isRecording = false;
   isMapLoading = false;
   mapErrorMessage = '';
+  private readonly preferredAudioMimeTypes = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4',
+    'audio/ogg;codecs=opus',
+    'audio/ogg',
+  ];
   private mediaRecorder: MediaRecorder | null = null;
   private recordingStream: MediaStream | null = null;
   private recordedChunks: Blob[] = [];
+  private speechRecognition: BrowserSpeechRecognition | null = null;
+  private speechRecognitionPrefix = '';
+  private recognizedSpeechQuery = '';
+  private speechRecognitionFailed = false;
+  private isUsingSpeechRecognition = false;
   private googleMap: any | null = null;
   private googleInfoWindow: any | null = null;
   private googleMarkers = new Map<string, any>();
@@ -70,6 +121,16 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    if (this.speechRecognition) {
+      try {
+        this.speechRecognition.stop();
+      } catch {
+        // noop
+      }
+    }
+
+    this.cleanupSpeechRecognition();
+    this.cleanupRecorder();
     this.clearGoogleMarkers();
     this.googleInfoWindow?.close();
   }
@@ -126,6 +187,41 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
     });
   }
 
+  private submitSpeechRecognitionSearch(transcript: string) {
+    const normalizedTranscript = transcript.trim();
+
+    if (!normalizedTranscript) {
+      this.recordingError = 'Aucune parole claire n a ete detectee. Reessayez plus pres du micro.';
+      this.recordingStateLabel = 'Touchez le micro pour poser votre question en audio.';
+      return;
+    }
+
+    this.searchQuery = normalizedTranscript;
+    this.recordingError = '';
+    this.isSearching = true;
+    this.recordingStateLabel = 'Recherche vocale en cours...';
+
+    this.aiPlaceService.search(normalizedTranscript, this.buildSearchOptions()).subscribe({
+      next: (experience: AiPlaceSearchExperience) => {
+        this.applySearchExperience({
+          ...experience,
+          inputMode: 'audio',
+          transcribedQuery: normalizedTranscript,
+        });
+        this.recordingStateLabel = 'Question audio analysee. Vous pouvez poser une nouvelle question.';
+        this.isSearching = false;
+      },
+      error: (error: unknown) => {
+        this.recordingError = this.resolveApiErrorMessage(
+          error,
+          'La recherche vocale a echoue. Reessayez dans quelques instants.'
+        );
+        this.recordingStateLabel = 'Touchez le micro pour reessayer.';
+        this.isSearching = false;
+      },
+    });
+  }
+
   useSuggestedQuestion(question: string) {
     this.searchQuery = question;
     this.searchWithAi();
@@ -152,11 +248,16 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
     }
 
     if (this.isRecording) {
-      this.stopRecording();
+      this.stopActiveAudioInput();
       return;
     }
 
     this.recordingError = '';
+
+    if (this.canUseSpeechRecognition()) {
+      this.startSpeechRecognition();
+      return;
+    }
 
     if (!this.canUseAudioRecording()) {
       this.recordingError = 'L enregistrement audio n est pas disponible sur cet appareil.';
@@ -165,7 +266,7 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      const recorder = this.createMediaRecorder(stream);
 
       this.recordedChunks = [];
       this.mediaRecorder = recorder;
@@ -180,8 +281,9 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
       });
 
       recorder.addEventListener('stop', () => {
+        const audioMimeType = recorder.mimeType || this.resolvePreferredAudioMimeType() || 'audio/webm';
         const audioBlob = new Blob(this.recordedChunks, {
-          type: recorder.mimeType || 'audio/webm',
+          type: audioMimeType,
         });
 
         this.cleanupRecorder();
@@ -596,6 +698,15 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
     });
   }
 
+  private stopActiveAudioInput() {
+    if (this.isUsingSpeechRecognition) {
+      this.stopSpeechRecognition();
+      return;
+    }
+
+    this.stopRecording();
+  }
+
   private stopRecording() {
     if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
       return;
@@ -623,6 +734,191 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
       && !!navigator.mediaDevices?.getUserMedia;
   }
 
+  private canUseSpeechRecognition(): boolean {
+    return !!this.getSpeechRecognitionConstructor();
+  }
+
+  private getSpeechRecognitionConstructor(): BrowserSpeechRecognitionConstructor | undefined {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    return window.SpeechRecognition || window.webkitSpeechRecognition;
+  }
+
+  private startSpeechRecognition() {
+    const SpeechRecognitionApi = this.getSpeechRecognitionConstructor();
+
+    if (!SpeechRecognitionApi) {
+      return;
+    }
+
+    const recognition = new SpeechRecognitionApi();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = this.resolveSpeechRecognitionLanguage();
+
+    this.speechRecognitionPrefix = this.searchQuery.trim();
+    this.recognizedSpeechQuery = this.speechRecognitionPrefix;
+    this.speechRecognitionFailed = false;
+    this.isUsingSpeechRecognition = true;
+    this.speechRecognition = recognition;
+
+    recognition.onstart = () => {
+      this.ngZone.run(() => {
+        this.isRecording = true;
+        this.recordingStateLabel = 'Ecoute en cours. Parlez puis touchez encore le micro pour lancer la recherche.';
+      });
+    };
+
+    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+      this.ngZone.run(() => {
+        const transcript = this.extractSpeechRecognitionTranscript(event);
+
+        if (!transcript) {
+          return;
+        }
+
+        this.recognizedSpeechQuery = transcript;
+        this.searchQuery = transcript;
+      });
+    };
+
+    recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
+      this.ngZone.run(() => {
+        this.speechRecognitionFailed = true;
+        this.recordingError = this.resolveSpeechRecognitionError(event.error);
+        this.recordingStateLabel = 'Touchez le micro pour reessayer.';
+      });
+    };
+
+    recognition.onend = () => {
+      this.ngZone.run(() => {
+        const transcript = this.recognizedSpeechQuery.trim();
+        const shouldSubmit = !this.speechRecognitionFailed && transcript.length > 0;
+
+        this.cleanupSpeechRecognition();
+
+        if (shouldSubmit) {
+          this.submitSpeechRecognitionSearch(transcript);
+          return;
+        }
+
+        if (!this.speechRecognitionFailed) {
+          this.recordingError = 'Aucune parole claire n a ete detectee. Reessayez plus pres du micro.';
+        }
+
+        this.recordingStateLabel = 'Touchez le micro pour poser votre question en audio.';
+      });
+    };
+
+    try {
+      recognition.start();
+    } catch {
+      this.cleanupSpeechRecognition();
+      this.recordingError = 'Le micro est deja utilise par une autre application. Patientez un instant.';
+    }
+  }
+
+  private stopSpeechRecognition() {
+    if (!this.speechRecognition) {
+      return;
+    }
+
+    this.recordingStateLabel = 'Transcription en cours...';
+
+    try {
+      this.speechRecognition.stop();
+    } catch {
+      this.cleanupSpeechRecognition();
+      this.recordingError = 'Impossible de terminer la saisie vocale proprement.';
+      this.recordingStateLabel = 'Touchez le micro pour reessayer.';
+    }
+  }
+
+  private cleanupSpeechRecognition() {
+    this.isRecording = false;
+    this.isUsingSpeechRecognition = false;
+    this.speechRecognition = null;
+    this.speechRecognitionPrefix = '';
+    this.recognizedSpeechQuery = '';
+  }
+
+  private extractSpeechRecognitionTranscript(event: BrowserSpeechRecognitionEvent): string {
+    const finalChunks: string[] = [];
+    let interimChunk = '';
+
+    for (let index = 0; index < event.results.length; index += 1) {
+      const result = event.results[index];
+      const transcript = result?.[0]?.transcript?.trim() || '';
+
+      if (!transcript) {
+        continue;
+      }
+
+      if (result.isFinal) {
+        finalChunks.push(transcript);
+      } else {
+        interimChunk = `${interimChunk} ${transcript}`.trim();
+      }
+    }
+
+    return [this.speechRecognitionPrefix, finalChunks.join(' '), interimChunk]
+      .map((value: string) => value.trim())
+      .filter((value: string) => value.length > 0)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private resolveSpeechRecognitionLanguage(): string {
+    const browserLanguage = (typeof navigator !== 'undefined' ? navigator.language : 'fr-FR').toLowerCase();
+
+    if (browserLanguage.startsWith('ar')) {
+      return 'ar-MA';
+    }
+
+    if (browserLanguage.startsWith('en')) {
+      return 'en-US';
+    }
+
+    return 'fr-FR';
+  }
+
+  private resolveSpeechRecognitionError(errorCode?: string): string {
+    switch (errorCode) {
+      case 'not-allowed':
+      case 'service-not-allowed':
+        return 'Le micro a ete refuse. Autorisez l acces au microphone dans votre navigateur.';
+      case 'audio-capture':
+        return 'Aucun micro detecte sur cet appareil.';
+      case 'network':
+        return 'La saisie vocale du navigateur a rencontre un probleme reseau.';
+      case 'no-speech':
+        return 'Aucune voix n a ete detectee. Reessayez plus pres du micro.';
+      default:
+        return 'La saisie vocale du navigateur a echoue. Reessayez ou utilisez le texte.';
+    }
+  }
+
+  private createMediaRecorder(stream: MediaStream): MediaRecorder {
+    const mimeType = this.resolvePreferredAudioMimeType();
+
+    if (mimeType) {
+      return new MediaRecorder(stream, { mimeType });
+    }
+
+    return new MediaRecorder(stream);
+  }
+
+  private resolvePreferredAudioMimeType(): string | undefined {
+    if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+      return undefined;
+    }
+
+    return this.preferredAudioMimeTypes.find((mimeType: string) => MediaRecorder.isTypeSupported(mimeType));
+  }
+
   private buildSearchOptions() {
     return {
       userLatitude: this.userLatitude,
@@ -646,9 +942,14 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
   private resolveApiErrorMessage(error: unknown, fallback: string): string {
     const apiError = error as {
       status?: number;
-      error?: string | { error?: string; message?: string };
+      error?: unknown;
       message?: string;
     };
+    const errorCode = this.extractApiCode(apiError.error);
+
+    if (errorCode === 'audio_transcription_error') {
+      return 'Le service audio n est pas configure cote backend. Utilisez la recherche texte pour le moment.';
+    }
 
     if (apiError?.status === 403) {
       return 'Acces refuse. Reconnectez-vous puis rechargez les lieux.';
@@ -662,20 +963,81 @@ export class Tab2Page implements AfterViewInit, OnDestroy {
   }
 
   private extractApiMessage(error: {
-    error?: string | { error?: string; message?: string };
+    error?: unknown;
     message?: string;
   }): string | undefined {
-    if (typeof error?.error === 'string' && error.error.trim()) {
-      return error.error.trim();
+    return this.extractNestedMessage(error?.error) || this.readTrimmedString(error?.message);
+  }
+
+  private extractNestedMessage(payload: unknown, depth = 0): string | undefined {
+    if (depth > 4 || payload == null) {
+      return undefined;
     }
 
-    if (typeof error?.error === 'object') {
-      const nestedError = error.error.error?.trim();
-      const nestedMessage = error.error.message?.trim();
+    if (typeof payload === 'string') {
+      const trimmed = payload.trim();
 
-      return nestedError || nestedMessage;
+      if (!trimmed) {
+        return undefined;
+      }
+
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return this.extractNestedMessage(JSON.parse(trimmed), depth + 1) || trimmed;
+        } catch {
+          return trimmed;
+        }
+      }
+
+      return trimmed;
     }
 
-    return error?.message?.trim() || undefined;
+    if (typeof payload !== 'object') {
+      return undefined;
+    }
+
+    const record = payload as Record<string, unknown>;
+
+    return this.readTrimmedString(record['message'])
+      || this.readTrimmedString(record['detail'])
+      || this.readTrimmedString(record['title'])
+      || this.extractNestedMessage(record['error'], depth + 1)
+      || this.extractNestedMessage(record['errors'], depth + 1);
+  }
+
+  private extractApiCode(payload: unknown, depth = 0): string | undefined {
+    if (depth > 4 || payload == null) {
+      return undefined;
+    }
+
+    if (typeof payload === 'string') {
+      const trimmed = payload.trim();
+
+      if (!trimmed) {
+        return undefined;
+      }
+
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return this.extractApiCode(JSON.parse(trimmed), depth + 1);
+        } catch {
+          return undefined;
+        }
+      }
+
+      return undefined;
+    }
+
+    if (typeof payload !== 'object') {
+      return undefined;
+    }
+
+    const record = payload as Record<string, unknown>;
+
+    return this.readTrimmedString(record['code']) || this.extractApiCode(record['error'], depth + 1);
+  }
+
+  private readTrimmedString(value: unknown): string | undefined {
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
   }
 }

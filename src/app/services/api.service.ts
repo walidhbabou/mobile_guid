@@ -54,15 +54,11 @@ export class ApiService {
 
   // ==================== PLACES ====================
   getPlaces(): Observable<any> {
-    return this.http.get(`${this.apiUrl}/api/places`, {
-      headers: this.getAuthHeaders()
-    });
+    return this.http.get(`${this.apiUrl}/api/morocco-ai/places`);
   }
 
   getPlaceById(id: string): Observable<any> {
-    return this.http.get(`${this.apiUrl}/api/places/${id}`, {
-      headers: this.getAuthHeaders()
-    });
+    return this.http.get(`${this.apiUrl}/api/morocco-ai/places/by-place-id/${encodeURIComponent(id)}`);
   }
 
   // ==================== CORE SERVICES ====================
