@@ -268,6 +268,10 @@ export class PlaceCatalogService {
       || `Decouvrez ${name} a ${location}.`;
     const address = this.pickString(record, ['address']) || location;
     const rating = this.pickNumber(record, ['rating', 'score']) ?? 0;
+    const imageUrl = this.pickImageUrl(record);
+    const latitude = this.pickNumber(record, ['latitude', 'lat']);
+    const longitude = this.pickNumber(record, ['longitude', 'lng', 'lon']);
+    const googleMapsUrl = this.pickGoogleMapsUrl(record, name, address, latitude, longitude);
 
     return {
       id: this.pickIdentifier(record, ['place_id', 'placeId', 'id']) || this.slugify(`${name}-${location}-${index}`),
@@ -287,10 +291,10 @@ export class PlaceCatalogService {
       hours: 'Consultez Google Maps pour les horaires du jour',
       starsLabel: this.buildStarsLabel(rating),
       highlights: this.buildHighlights(types, location, address),
-      imageUrl: this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image']),
-      googleMapsUrl: this.pickString(record, ['google_maps_url', 'googleMapsUrl']),
-      latitude: this.pickNumber(record, ['latitude', 'lat']),
-      longitude: this.pickNumber(record, ['longitude', 'lng', 'lon']),
+      imageUrl,
+      googleMapsUrl,
+      latitude,
+      longitude,
       types,
       city: location,
     };
@@ -301,20 +305,32 @@ export class PlaceCatalogService {
       return response;
     }
 
-    if (!response || typeof response !== 'object') {
+    const records = this.collectResponseRecords(response);
+
+    if (!records.length) {
       return [];
     }
 
-    const data = response as Record<string, unknown>;
-    const candidateArrays = [
-      data['results'],
-      data['places'],
-      data['data'],
-      data['items'],
-    ];
-    const rawArray = candidateArrays.find(Array.isArray);
+    const candidates = records.reduce((items: unknown[], record: Record<string, unknown>) => {
+      items.push(record['results'], record['places'], record['data'], record['items']);
+      return items;
+    }, []);
+    const rawArray = candidates.find(Array.isArray);
 
     return Array.isArray(rawArray) ? rawArray : [];
+  }
+
+  private collectResponseRecords(response: unknown, depth = 0): Record<string, unknown>[] {
+    if (!response || typeof response !== 'object' || Array.isArray(response) || depth > 3) {
+      return [];
+    }
+
+    const record = response as Record<string, unknown>;
+    const nestedRecords = ['data', 'payload', 'response'].reduce((items: Record<string, unknown>[], key: string) => {
+      return [...items, ...this.collectResponseRecords(record[key], depth + 1)];
+    }, []);
+
+    return [record, ...nestedRecords];
   }
 
   private buildLocation(record: Record<string, unknown>): string {
@@ -458,6 +474,74 @@ export class PlaceCatalogService {
     }
 
     return 'compass-outline';
+  }
+
+  private pickImageUrl(record: Record<string, unknown>): string | undefined {
+    const directUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']);
+
+    if (directUrl) {
+      return directUrl;
+    }
+
+    return this.pickMediaUrl(record['photo'])
+      || this.pickMediaUrl(record['photos'])
+      || this.pickMediaUrl(record['images']);
+  }
+
+  private pickMediaUrl(value: unknown): string | undefined {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        const mediaUrl = this.pickMediaUrl(item);
+
+        if (mediaUrl) {
+          return mediaUrl;
+        }
+      }
+
+      return undefined;
+    }
+
+    if (!value || typeof value !== 'object') {
+      return undefined;
+    }
+
+    const record = value as Record<string, unknown>;
+    const directUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail', 'url', 'src']);
+
+    if (directUrl) {
+      return directUrl;
+    }
+
+    return this.pickMediaUrl(record['photo'])
+      || this.pickMediaUrl(record['thumbnail'])
+      || this.pickMediaUrl(record['url'])
+      || this.pickMediaUrl(record['src']);
+  }
+
+  private pickGoogleMapsUrl(
+    record: Record<string, unknown>,
+    name: string,
+    address: string,
+    latitude?: number,
+    longitude?: number
+  ): string | undefined {
+    const directUrl = this.pickString(record, ['google_maps_url', 'googleMapsUrl', 'maps_url', 'mapsUrl']);
+
+    if (directUrl) {
+      return directUrl;
+    }
+
+    if (typeof latitude === 'number' && typeof longitude === 'number') {
+      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
+
+    const query = [name, address].filter((segment: string) => segment.trim().length > 0).join(', ');
+
+    return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : undefined;
   }
 
   private pickString(record: Record<string, unknown>, keys: string[]): string | undefined {

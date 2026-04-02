@@ -99,6 +99,12 @@ export class ApiService {
     });
   }
 
+  postFormData(endpoint: string, data: FormData): Observable<any> {
+    return this.http.post(`${this.apiUrl}${endpoint}`, data, {
+      headers: this.getAuthHeaders(false)
+    });
+  }
+
   put(endpoint: string, data: any): Observable<any> {
     return this.http.put(`${this.apiUrl}${endpoint}`, data, {
       headers: this.getAuthHeaders()
@@ -112,11 +118,13 @@ export class ApiService {
   }
 
   // ==================== GESTION DES HEADERS ====================
-  private getAuthHeaders(): HttpHeaders {
+  private getAuthHeaders(includeJsonContentType = true): HttpHeaders {
     const token = this.tokenService.getAccessToken();
-    let headers = new HttpHeaders({
-      'Content-Type': 'application/json'
-    });
+    let headers = new HttpHeaders();
+
+    if (includeJsonContentType) {
+      headers = headers.set('Content-Type', 'application/json');
+    }
 
     if (token) {
       headers = headers.set('Authorization', `Bearer ${token}`);

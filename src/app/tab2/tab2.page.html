@@ -6,8 +6,98 @@
         <h1>Explorez autour de vous</h1>
       </div>
 
-      <button type="button" class="icon-bubble">
-        <ion-icon name="locate-outline"></ion-icon>
+      <button type="button" class="icon-bubble" (click)="locateUser()" [disabled]="isLocating">
+        <ion-spinner *ngIf="isLocating" name="crescent"></ion-spinner>
+        <ion-icon *ngIf="!isLocating" name="locate-outline"></ion-icon>
+      </button>
+    </section>
+
+    <section class="voice-search-card surface-card">
+      <div class="voice-search-card__header">
+        <div>
+          <p class="eyebrow">Question texte ou audio</p>
+          <h2>Analyse AI reliee a la carte</h2>
+        </div>
+
+        <span class="soft-pill">{{ searchMode === 'catalog' ? 'Catalogue' : (searchMode === 'ai' ? 'IA' : 'Local') }}</span>
+      </div>
+
+      <div class="voice-search-card__shell">
+        <ion-icon name="search-outline"></ion-icon>
+        <ion-input
+          [(ngModel)]="searchQuery"
+          type="text"
+          placeholder="Ex: un cafe calme a Rabat ou une sortie en famille"
+          (keyup.enter)="searchWithAi()"
+        ></ion-input>
+
+        <button
+          type="button"
+          class="voice-search-card__action"
+          (click)="searchWithAi()"
+          [disabled]="isSearching || isRecording || !searchQuery.trim()"
+        >
+          <ion-spinner *ngIf="isSearching && !isRecording" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!isSearching || isRecording" name="arrow-forward-outline"></ion-icon>
+        </button>
+
+        <button
+          type="button"
+          class="voice-search-card__action voice-search-card__action--mic"
+          [class.recording]="isRecording"
+          (click)="toggleRecording()"
+          [disabled]="isSearching && !isRecording"
+        >
+          <ion-icon [name]="isRecording ? 'stop-circle-outline' : 'mic-outline'"></ion-icon>
+        </button>
+      </div>
+
+      <p class="voice-search-card__status">{{ recordingStateLabel }}</p>
+      <p class="voice-search-card__position">{{ locationLabel }}</p>
+      <p class="voice-search-card__error" *ngIf="recordingError">{{ recordingError }}</p>
+
+      <div class="voice-search-card__chips" *ngIf="suggestedQuestions.length">
+        <button
+          type="button"
+          class="soft-pill"
+          *ngFor="let question of suggestedQuestions"
+          (click)="useSuggestedQuestion(question)"
+        >
+          {{ question }}
+        </button>
+      </div>
+
+      <div class="voice-search-card__actions" *ngIf="hasActiveSearch">
+        <ion-button size="small" fill="outline" (click)="clearAiSearch()">Retour au catalogue</ion-button>
+      </div>
+    </section>
+
+    <section
+      class="assistant-panel surface-card"
+      *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.transcribedQuery"
+    >
+      <div class="assistant-panel__meta">
+        <span class="soft-pill" *ngIf="searchExperience?.inputMode">{{ searchExperience?.inputMode }}</span>
+        <span class="soft-pill" *ngIf="searchExperience?.detectedLanguage">{{ searchExperience?.detectedLanguage }}</span>
+        <span class="soft-pill" *ngIf="searchExperience?.audioFilename">{{ searchExperience?.audioFilename }}</span>
+      </div>
+
+      <p class="assistant-panel__transcript" *ngIf="searchExperience?.transcribedQuery">
+        "{{ searchExperience?.transcribedQuery }}"
+      </p>
+      <p class="assistant-panel__body">{{ searchExperience?.assistantReply || searchExperience?.message }}</p>
+    </section>
+
+    <section class="guide-cards" *ngIf="guideCards.length">
+      <button
+        type="button"
+        class="guide-card surface-card"
+        *ngFor="let card of guideCards"
+        (click)="useGuideCard(card)"
+      >
+        <strong>{{ card.title }}</strong>
+        <p>{{ card.description }}</p>
+        <span>{{ card.query || 'Utiliser cette suggestion' }}</span>
       </button>
     </section>
 
@@ -23,19 +113,36 @@
     </div>
 
     <section class="map-canvas surface-card">
-      <div class="map-layer"></div>
-      <div class="map-route"></div>
+      <div #googleMap class="google-map"></div>
 
       <button
         type="button"
-        class="map-marker"
-        *ngFor="let marker of markers"
-        [style.top.%]="marker.top"
-        [style.left.%]="marker.left"
-        [class.active]="selectedPlace?.id === marker.place.id"
-        (click)="selectPlace(marker.place)"
+        class="map-center-button"
+        *ngIf="selectedPlace"
+        (click)="focusSelectedPlace()"
       >
-        <ion-icon name="location"></ion-icon>
+        <ion-icon name="locate-outline"></ion-icon>
+      </button>
+
+      <div class="map-canvas__overlay" *ngIf="isMapLoading || mapErrorMessage">
+        <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
+        <div>
+          <strong>{{ isMapLoading ? 'Chargement de Google Maps...' : 'Carte indisponible' }}</strong>
+          <p>{{ isMapLoading ? 'La carte se prepare dans cette page.' : mapErrorMessage }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="map-place-strip" *ngIf="filteredPlaces.length">
+      <button
+        type="button"
+        class="map-place-chip surface-card"
+        *ngFor="let place of filteredPlaces"
+        [class.active]="selectedPlace?.id === place.id"
+        (click)="selectPlace(place)"
+      >
+        <strong>{{ place.name }}</strong>
+        <span>{{ place.location }}</span>
       </button>
     </section>
 
@@ -48,6 +155,7 @@
           [alt]="place.name"
           loading="lazy"
           decoding="async"
+          (error)="handlePlaceImageError(place)"
         />
         <span class="visual-badge">{{ place.badge }}</span>
         <span class="visual-icon">
@@ -65,9 +173,14 @@
           <span>/ 5</span>
         </div>
 
-        <ion-button size="small" [routerLink]="['/tabs/place', place.id]">
-          Voir details
-        </ion-button>
+        <div class="selected-place__actions">
+          <ion-button size="small" [routerLink]="['/tabs/place', place.id]">
+            Voir details
+          </ion-button>
+          <ion-button size="small" fill="outline" *ngIf="place.googleMapsUrl" [href]="place.googleMapsUrl" target="_blank">
+            Google Maps
+          </ion-button>
+        </div>
       </div>
     </section>
 

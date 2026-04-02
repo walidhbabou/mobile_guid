@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { Place } from '../data/tourism.data';
-import { AiPlaceSearchResult } from '../models/ai-place.model';
+import { AiGuideCard, AiPlaceSearchExperience, AiPlaceSearchResult } from '../models/ai-place.model';
 import { AiPlaceService } from '../services/ai-place.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
 
@@ -17,10 +17,11 @@ export class Tab1Page {
   hasSearched = false;
   searchResults: AiPlaceSearchResult[] = [];
   searchMode: 'ai' | 'fallback' | 'idle' = 'idle';
+  searchExperience: AiPlaceSearchExperience | null = null;
   featuredPlaces: Place[] = [];
   quickFilters: string[] = [];
   highlightPlace: Place | null = null;
-  readonly suggestedPrompts = [
+  readonly defaultSuggestedPrompts = [
     'plage calme a Agadir',
     'sortie famille a Rabat',
     'ville culturelle pour photos',
@@ -48,13 +49,15 @@ export class Tab1Page {
     this.isSearching = true;
     this.hasSearched = true;
 
-    this.aiPlaceService.searchPlaces(query).subscribe({
-      next: (results) => {
-        this.searchResults = results;
-        this.searchMode = results.some((item) => item.source === 'ai') ? 'ai' : 'fallback';
+    this.aiPlaceService.search(query).subscribe({
+      next: (experience: AiPlaceSearchExperience) => {
+        this.searchExperience = experience;
+        this.searchResults = experience.results;
+        this.searchMode = experience.source;
         this.isSearching = false;
       },
       error: () => {
+        this.searchExperience = null;
         this.searchResults = [];
         this.searchMode = 'fallback';
         this.isSearching = false;
@@ -69,14 +72,30 @@ export class Tab1Page {
 
   clearSearch() {
     this.searchQuery = '';
+    this.searchExperience = null;
     this.searchResults = [];
     this.hasSearched = false;
     this.searchMode = 'idle';
     this.isSearching = false;
   }
 
+  handlePlaceImageError(place: Place) {
+    place.imageUrl = undefined;
+  }
+
   handleResultImageError(result: AiPlaceSearchResult) {
     result.imageUrl = undefined;
+  }
+
+  useGuideCard(card: AiGuideCard) {
+    this.searchQuery = card.query || card.title;
+    this.searchWithAi();
+  }
+
+  get activePrompts(): string[] {
+    return this.searchExperience?.suggestedQuestions?.length
+      ? this.searchExperience.suggestedQuestions
+      : this.defaultSuggestedPrompts;
   }
 
   private loadHomeContent() {

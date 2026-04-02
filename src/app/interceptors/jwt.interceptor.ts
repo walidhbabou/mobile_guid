@@ -8,20 +8,19 @@ import {
 } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { TokenService } from '../services/token.service';
 
 @Injectable()
 export class JwtInterceptor implements HttpInterceptor {
-  constructor() {}
+  constructor(private tokenService: TokenService) {}
 
   intercept(
     request: HttpRequest<unknown>,
     next: HttpHandler
   ): Observable<HttpEvent<unknown>> {
-    // Get the token from localStorage
-    const token = localStorage.getItem('token');
+    const token = this.tokenService.getAccessToken() || localStorage.getItem('token');
 
-    // Clone the request and add the authorization header if token exists
-    if (token) {
+    if (token && !request.headers.has('Authorization')) {
       request = request.clone({
         setHeaders: {
           Authorization: `Bearer ${token}`,
@@ -31,11 +30,11 @@ export class JwtInterceptor implements HttpInterceptor {
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        if (error.status === 401) {
-          // Handle unauthorized error (token expired, invalid, etc.)
+        if (error.status === 401 || error.status === 403) {
+          this.tokenService.removeTokens();
           localStorage.removeItem('token');
-          // You can emit an event or redirect to login here
         }
+
         return throwError(() => error);
       })
     );

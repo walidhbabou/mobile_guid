@@ -8,6 +8,7 @@ export class TokenService {
   saveTokens(accessToken: string, refreshToken: string): void {
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('token', accessToken);
     localStorage.setItem('isLoggedIn', 'true');
   }
 
@@ -22,6 +23,7 @@ export class TokenService {
   removeTokens(): void {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('isLoggedIn');
   }
 

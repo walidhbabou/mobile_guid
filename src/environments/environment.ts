@@ -5,7 +5,8 @@
 export const environment = {
   production: false,
   apiGatewayUrl: 'http://localhost:8081',
-  authServiceUrl: 'http://localhost:8081'
+  authServiceUrl: 'http://localhost:8081',
+  googleMapsApiKey: 'AIzaSyDyUQokHyUmfa9Ni-PZr7VvKanZdY-1hOw'
 };
 
 /*

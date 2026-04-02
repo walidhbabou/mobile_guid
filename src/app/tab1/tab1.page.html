@@ -46,7 +46,7 @@
         <button
           type="button"
           class="soft-pill"
-          *ngFor="let prompt of suggestedPrompts"
+          *ngFor="let prompt of activePrompts"
           (click)="useSuggestedPrompt(prompt)"
         >
           {{ prompt }}
@@ -63,6 +63,39 @@
       <p class="ai-search-note" *ngIf="searchMode === 'fallback' && searchResults.length">
         ai-place-service n a pas repondu pour cette recherche. L app affiche des suggestions locales proches de votre besoin.
       </p>
+
+      <section
+        class="assistant-response-card surface-card"
+        *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.transcribedQuery"
+      >
+        <div class="assistant-response-card__meta">
+          <span class="soft-pill" *ngIf="searchExperience?.inputMode === 'audio'">Question audio analysee</span>
+          <span class="soft-pill" *ngIf="searchExperience?.detectedLanguage">
+            Langue: {{ searchExperience?.detectedLanguage }}
+          </span>
+        </div>
+
+        <p class="assistant-response-card__transcript" *ngIf="searchExperience?.transcribedQuery">
+          "{{ searchExperience?.transcribedQuery }}"
+        </p>
+
+        <p class="assistant-response-card__body">
+          {{ searchExperience?.assistantReply || searchExperience?.message }}
+        </p>
+      </section>
+
+      <section class="guide-cards" *ngIf="searchExperience?.guideCards?.length">
+        <button
+          type="button"
+          class="guide-card surface-card"
+          *ngFor="let card of searchExperience?.guideCards"
+          (click)="useGuideCard(card)"
+        >
+          <strong>{{ card.title }}</strong>
+          <p>{{ card.description }}</p>
+          <span>{{ card.query || 'Relancer cette recherche' }}</span>
+        </button>
+      </section>
 
       <div class="ai-results-grid" *ngIf="searchResults.length; else emptySearchState">
         <article class="ai-result-card surface-card" *ngFor="let result of searchResults">
@@ -140,6 +173,15 @@
         [routerLink]="['/tabs/place', place.id]"
       >
         <div class="place-card__visual scenic-visual" [ngClass]="place.theme">
+          <img
+            *ngIf="place.imageUrl"
+            class="place-card__image"
+            [src]="place.imageUrl"
+            [alt]="place.name"
+            loading="lazy"
+            decoding="async"
+            (error)="handlePlaceImageError(place)"
+          />
           <span class="visual-badge">{{ place.badge }}</span>
           <span class="visual-icon">
             <ion-icon [name]="place.icon"></ion-icon>

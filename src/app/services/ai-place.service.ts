@@ -1,10 +1,16 @@
 import { Injectable } from '@angular/core';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, switchMap, take } from 'rxjs/operators';
-import { AiPlaceSearchResult } from '../models/ai-place.model';
+import { AiGuideCard, AiPlaceSearchExperience, AiPlaceSearchResult } from '../models/ai-place.model';
 import { Place } from '../data/tourism.data';
 import { ApiService } from './api.service';
 import { PlaceCatalogService } from './place-catalog.service';
+
+export interface AiSearchRequestOptions {
+  userLatitude?: number;
+  userLongitude?: number;
+  language?: string;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -15,73 +21,139 @@ export class AiPlaceService {
     private placeCatalogService: PlaceCatalogService
   ) {}
 
-  searchPlaces(query: string): Observable<AiPlaceSearchResult[]> {
+  search(query: string, options: AiSearchRequestOptions = {}): Observable<AiPlaceSearchExperience> {
     const normalizedQuery = query.trim();
 
     if (!normalizedQuery) {
-      return of([]);
+      return of(this.buildEmptyExperience());
     }
 
-    const payload = {
-      query: normalizedQuery,
-      question: normalizedQuery,
-    };
-
     const attempts = [
-      () => this.apiService.post('/api/ai/search', payload),
+      () => this.apiService.post('/api/morocco-ai/search', this.buildTextPayload(normalizedQuery, options)),
+      () => this.apiService.post('/api/ai/search', this.buildTextPayload(normalizedQuery, options)),
       () => this.apiService.get(`/api/ai/search?query=${encodeURIComponent(normalizedQuery)}`),
     ];
 
     return this.placeCatalogService.getPlaces().pipe(
       take(1),
       switchMap((places: Place[]) => this.tryRequest(attempts).pipe(
-        map((response: unknown) => {
-          const aiResults = this.normalizeResponse(response, places);
-          return aiResults.length > 0 ? aiResults : this.buildFallbackResults(normalizedQuery, places);
-        }),
-        catchError(() => of(this.buildFallbackResults(normalizedQuery, places)))
+        map((response: unknown) => this.normalizeExperience(response, places, normalizedQuery)),
+        catchError(() => of(this.buildFallbackExperience(normalizedQuery, places)))
       ))
     );
   }
 
-  private tryRequest(attempts: Array<() => Observable<unknown>>, index = 0): Observable<unknown> {
-    if (index >= attempts.length) {
-      return throwError(() => new Error('Aucun endpoint ai-place-service disponible.'));
-    }
-
-    return attempts[index]().pipe(
-      catchError(() => this.tryRequest(attempts, index + 1))
+  searchPlaces(query: string, options: AiSearchRequestOptions = {}): Observable<AiPlaceSearchResult[]> {
+    return this.search(query, options).pipe(
+      map((experience: AiPlaceSearchExperience) => experience.results)
     );
   }
 
-  private normalizeResponse(response: unknown, places: Place[]): AiPlaceSearchResult[] {
-    const rawResults = this.extractResultArray(response);
+  searchFromAudio(audio: Blob, options: AiSearchRequestOptions = {}): Observable<AiPlaceSearchExperience> {
+    const params = new URLSearchParams();
+    const normalizedLanguage = this.normalizeLanguage(options.language);
 
-    return rawResults
+    if (typeof options.userLatitude === 'number') {
+      params.set('user_latitude', String(options.userLatitude));
+    }
+
+    if (typeof options.userLongitude === 'number') {
+      params.set('user_longitude', String(options.userLongitude));
+    }
+
+    if (normalizedLanguage) {
+      params.set('language', normalizedLanguage);
+    }
+
+    const queryString = params.toString();
+    const endpoint = `/api/morocco-ai/search/audio${queryString ? `?${queryString}` : ''}`;
+    const attempts = ['audio', 'file', 'audio_file'].map((fieldName: string) => (
+      () => this.apiService.postFormData(
+        endpoint,
+        this.buildAudioFormData(audio, fieldName, options, normalizedLanguage)
+      )
+    ));
+
+    return this.placeCatalogService.getPlaces().pipe(
+      take(1),
+      switchMap((places: Place[]) => this.tryRequest(attempts).pipe(
+        map((response: unknown) => this.normalizeExperience(response, places)),
+      ))
+    );
+  }
+
+  private tryRequest(
+    attempts: Array<() => Observable<unknown>>,
+    index = 0,
+    lastError?: unknown
+  ): Observable<unknown> {
+    if (index >= attempts.length) {
+      return throwError(() => lastError instanceof Error ? lastError : new Error('Aucun endpoint ai-place-service disponible.'));
+    }
+
+    return attempts[index]().pipe(
+      catchError((error: unknown) => this.tryRequest(attempts, index + 1, error))
+    );
+  }
+
+  private normalizeExperience(
+    response: unknown,
+    places: Place[],
+    fallbackQuery?: string
+  ): AiPlaceSearchExperience {
+    const records = this.collectResponseRecords(this.parseJsonResponse(response));
+    const aiResults = this.extractResultArray(records)
       .map((item: unknown, index: number) => this.normalizeItem(item, index, places))
       .filter((item): item is AiPlaceSearchResult => item !== null)
       .slice(0, 6);
+
+    if (aiResults.length > 0) {
+      return {
+        results: aiResults,
+        source: 'ai',
+        assistantReply: this.pickStringFromRecords(records, ['assistant_reply', 'assistantReply']),
+        message: this.pickStringFromRecords(records, ['message']),
+        inputMode: this.pickStringFromRecords(records, ['input_mode', 'inputMode']),
+        responseMode: this.pickStringFromRecords(records, ['response_mode', 'responseMode']),
+        detectedLanguage: this.pickStringFromRecords(records, ['detected_language', 'detectedLanguage']),
+        transcribedQuery: this.pickStringFromRecords(records, ['transcribed_query', 'transcribedQuery']),
+        audioFilename: this.pickStringFromRecords(records, ['audio_filename', 'audioFilename']),
+        city: this.pickStringFromRecords(records, ['city']),
+        category: this.pickStringFromRecords(records, ['category']),
+        resultsCount: this.pickNumberFromRecords(records, ['results_count', 'resultsCount']) ?? aiResults.length,
+        suggestedQuestions: this.pickStringArrayFromRecords(records, ['suggested_questions', 'suggestedQuestions']).slice(0, 6),
+        guideCards: this.pickGuideCards(records).slice(0, 3),
+      };
+    }
+
+    if (fallbackQuery) {
+      return this.buildFallbackExperience(fallbackQuery, places, records);
+    }
+
+    return {
+      ...this.buildEmptyExperience(),
+      assistantReply: this.pickStringFromRecords(records, ['assistant_reply', 'assistantReply']),
+      message: this.pickStringFromRecords(records, ['message']),
+      inputMode: this.pickStringFromRecords(records, ['input_mode', 'inputMode']),
+      responseMode: this.pickStringFromRecords(records, ['response_mode', 'responseMode']),
+      detectedLanguage: this.pickStringFromRecords(records, ['detected_language', 'detectedLanguage']),
+      transcribedQuery: this.pickStringFromRecords(records, ['transcribed_query', 'transcribedQuery']),
+      audioFilename: this.pickStringFromRecords(records, ['audio_filename', 'audioFilename']),
+      city: this.pickStringFromRecords(records, ['city']),
+      category: this.pickStringFromRecords(records, ['category']),
+      suggestedQuestions: this.pickStringArrayFromRecords(records, ['suggested_questions', 'suggestedQuestions']).slice(0, 6),
+      guideCards: this.pickGuideCards(records).slice(0, 3),
+    };
   }
 
-  private extractResultArray(response: unknown): unknown[] {
-    if (Array.isArray(response)) {
-      return response;
-    }
+  private extractResultArray(records: Record<string, unknown>[]): unknown[] {
+    const candidates = records.reduce((items: unknown[], record: Record<string, unknown>) => {
+      items.push(record['results'], record['places'], record['recommendations'], record['data'], record['items']);
+      return items;
+    }, []);
+    const rawArray = candidates.find(Array.isArray);
 
-    if (!response || typeof response !== 'object') {
-      return [];
-    }
-
-    const data = response as Record<string, unknown>;
-    const candidateArrays = [
-      data['results'],
-      data['places'],
-      data['recommendations'],
-      data['data'],
-      data['items'],
-    ];
-
-    return candidateArrays.find(Array.isArray) as unknown[] ?? [];
+    return Array.isArray(rawArray) ? rawArray : [];
   }
 
   private normalizeItem(item: unknown, index: number, places: Place[]): AiPlaceSearchResult | null {
@@ -96,12 +168,17 @@ export class AiPlaceService {
       return null;
     }
 
+    const address = this.pickString(record, ['address']);
     const location = this.pickString(record, ['location', 'city', 'address']) || 'Maroc';
     const category = this.pickString(record, ['category', 'type', 'tag']) || 'Suggestion';
     const description = this.pickString(record, ['description', 'reason', 'summary', 'recommendation', 'shortDescription'])
       || 'Suggestion trouvee par ai-place-service selon votre besoin.';
     const rating = this.pickNumber(record, ['rating', 'score']);
     const imageUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']);
+    const latitude = this.pickNumber(record, ['latitude', 'lat']);
+    const longitude = this.pickNumber(record, ['longitude', 'lng', 'lon']);
+    const googleMapsUrl = this.pickString(record, ['google_maps_url', 'googleMapsUrl']);
+    const types = this.pickStringArray(record, ['types']);
     const externalId = this.pickIdentifier(record, ['place_id', 'placeId', 'id']);
     const routeMatch = this.findLocalMatch(externalId, name, location, category, places);
     const visualTheme = routeMatch?.theme || this.pickTheme(category, location, name);
@@ -114,14 +191,44 @@ export class AiPlaceService {
       location,
       category,
       description,
+      address,
       rating,
       imageUrl,
+      latitude,
+      longitude,
+      googleMapsUrl,
+      types,
       reviewsLabel: routeMatch?.reviewsLabel,
       routeId: routeMatch?.id || externalId,
       theme: visualTheme,
       visualBadge,
       visualIcon,
       source: 'ai',
+    };
+  }
+
+  private buildFallbackExperience(
+    query: string,
+    places: Place[],
+    records: Record<string, unknown>[] = []
+  ): AiPlaceSearchExperience {
+    const fallbackResults = this.buildFallbackResults(query, places);
+
+    return {
+      results: fallbackResults,
+      source: 'fallback',
+      assistantReply: this.pickStringFromRecords(records, ['assistant_reply', 'assistantReply']),
+      message: this.pickStringFromRecords(records, ['message']) || 'Suggestions locales proposees a partir du catalogue disponible.',
+      inputMode: this.pickStringFromRecords(records, ['input_mode', 'inputMode']),
+      responseMode: this.pickStringFromRecords(records, ['response_mode', 'responseMode']),
+      detectedLanguage: this.pickStringFromRecords(records, ['detected_language', 'detectedLanguage']),
+      transcribedQuery: this.pickStringFromRecords(records, ['transcribed_query', 'transcribedQuery']),
+      audioFilename: this.pickStringFromRecords(records, ['audio_filename', 'audioFilename']),
+      city: this.pickStringFromRecords(records, ['city']),
+      category: this.pickStringFromRecords(records, ['category']),
+      resultsCount: fallbackResults.length,
+      suggestedQuestions: this.pickStringArrayFromRecords(records, ['suggested_questions', 'suggestedQuestions']).slice(0, 6),
+      guideCards: this.pickGuideCards(records).slice(0, 3),
     };
   }
 
@@ -147,7 +254,13 @@ export class AiPlaceService {
         location: place.location,
         category: place.category,
         description: `Resultat local proche de votre recherche: ${place.shortDescription}`,
+        address: place.address,
         rating: place.rating,
+        imageUrl: place.imageUrl,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        googleMapsUrl: place.googleMapsUrl,
+        types: place.types,
         reviewsLabel: place.reviewsLabel,
         routeId: place.id,
         theme: place.theme,
@@ -155,6 +268,16 @@ export class AiPlaceService {
         visualIcon: place.icon,
         source: 'fallback' as const,
       }));
+  }
+
+  private buildEmptyExperience(): AiPlaceSearchExperience {
+    return {
+      results: [],
+      source: 'ai',
+      resultsCount: 0,
+      suggestedQuestions: [],
+      guideCards: [],
+    };
   }
 
   private scorePlace(place: Place, terms: string[]): number {
@@ -202,41 +325,201 @@ export class AiPlaceService {
     });
   }
 
+  private buildTextPayload(query: string, options: AiSearchRequestOptions): Record<string, unknown> {
+    return {
+      query,
+      question: query,
+      ...(typeof options.userLatitude === 'number' ? { user_latitude: options.userLatitude } : {}),
+      ...(typeof options.userLongitude === 'number' ? { user_longitude: options.userLongitude } : {}),
+    };
+  }
+
+  private buildAudioFormData(
+    audio: Blob,
+    fieldName: string,
+    options: AiSearchRequestOptions,
+    normalizedLanguage?: string
+  ): FormData {
+    const formData = new FormData();
+    const filename = `voice-query-${Date.now()}.${this.resolveAudioExtension(audio.type)}`;
+
+    formData.append(fieldName, audio, filename);
+
+    if (normalizedLanguage) {
+      formData.append('language', normalizedLanguage);
+      formData.append('lang', normalizedLanguage);
+    }
+
+    if (typeof options.userLatitude === 'number') {
+      formData.append('user_latitude', String(options.userLatitude));
+    }
+
+    if (typeof options.userLongitude === 'number') {
+      formData.append('user_longitude', String(options.userLongitude));
+    }
+
+    return formData;
+  }
+
+  private normalizeLanguage(language?: string): string | undefined {
+    const value = language?.trim();
+
+    if (!value) {
+      return undefined;
+    }
+
+    return value.split('-')[0]?.toLowerCase() || value.toLowerCase();
+  }
+
+  private resolveAudioExtension(mimeType?: string): string {
+    const normalizedMimeType = mimeType?.split(';')[0]?.trim().toLowerCase();
+
+    switch (normalizedMimeType) {
+      case 'audio/wav':
+      case 'audio/x-wav':
+        return 'wav';
+      case 'audio/mpeg':
+        return 'mp3';
+      case 'audio/mp4':
+        return 'mp4';
+      case 'audio/ogg':
+        return 'ogg';
+      default:
+        return 'webm';
+    }
+  }
+
+  private parseJsonResponse(response: unknown): unknown {
+    if (typeof response !== 'string') {
+      return response;
+    }
+
+    const trimmed = response.trim();
+
+    if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+      return response;
+    }
+
+    try {
+      return JSON.parse(trimmed) as unknown;
+    } catch {
+      return response;
+    }
+  }
+
+  private collectResponseRecords(response: unknown, depth = 0): Record<string, unknown>[] {
+    if (!response || typeof response !== 'object' || Array.isArray(response) || depth > 3) {
+      return [];
+    }
+
+    const record = response as Record<string, unknown>;
+    const nestedRecords = ['data', 'payload', 'response'].reduce((items: Record<string, unknown>[], key: string) => {
+      return [...items, ...this.collectResponseRecords(record[key], depth + 1)];
+    }, []);
+
+    return [record, ...nestedRecords];
+  }
+
+  private pickStringFromRecords(records: Record<string, unknown>[], keys: string[]): string | undefined {
+    return records
+      .map((record: Record<string, unknown>) => this.pickString(record, keys))
+      .find((value: string | undefined) => typeof value === 'string' && value.trim().length > 0);
+  }
+
+  private pickNumberFromRecords(records: Record<string, unknown>[], keys: string[]): number | undefined {
+    return records
+      .map((record: Record<string, unknown>) => this.pickNumber(record, keys))
+      .find((value: number | undefined) => typeof value === 'number');
+  }
+
+  private pickStringArrayFromRecords(records: Record<string, unknown>[], keys: string[]): string[] {
+    return records
+      .map((record: Record<string, unknown>) => this.pickStringArray(record, keys))
+      .find((value: string[]) => value.length > 0) ?? [];
+  }
+
+  private pickGuideCards(records: Record<string, unknown>[]): AiGuideCard[] {
+    const candidates = records.reduce((items: unknown[], record: Record<string, unknown>) => {
+      items.push(record['guide_cards'], record['guideCards']);
+      return items;
+    }, []);
+    const value = candidates.find(Array.isArray);
+
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.reduce((cards: AiGuideCard[], item: unknown) => {
+      if (!item || typeof item !== 'object') {
+        return cards;
+      }
+
+      const record = item as Record<string, unknown>;
+      const title = this.pickString(record, ['title']);
+      const description = this.pickString(record, ['description']);
+      const query = this.pickString(record, ['query']);
+
+      if (!title && !description && !query) {
+        return cards;
+      }
+
+      cards.push({
+        title: title || query || 'Suggestion',
+        description: description || 'Essayez cette piste dans la recherche intelligente.',
+        query: query || title,
+      });
+
+      return cards;
+    }, []);
+  }
+
   private pickString(record: Record<string, unknown>, keys: string[]): string | undefined {
     const value = keys
-      .map((key) => record[key])
-      .find((candidate) => typeof candidate === 'string' && candidate.trim().length > 0);
+      .map((key: string) => record[key])
+      .find((candidate: unknown) => typeof candidate === 'string' && candidate.trim().length > 0);
 
     return typeof value === 'string' ? value.trim() : undefined;
   }
 
   private pickIdentifier(record: Record<string, unknown>, keys: string[]): string | undefined {
     const value = keys
-      .map((key) => record[key])
-      .find((candidate) => typeof candidate === 'string' || typeof candidate === 'number');
+      .map((key: string) => record[key])
+      .find((candidate: unknown) => typeof candidate === 'string' || typeof candidate === 'number');
 
     if (typeof value === 'number') {
       return String(value);
     }
 
-    return typeof value === 'string' ? value.trim() : undefined;
+    return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
   }
 
   private pickNumber(record: Record<string, unknown>, keys: string[]): number | undefined {
     const value = keys
-      .map((key) => record[key])
-      .find((candidate) => typeof candidate === 'number' || typeof candidate === 'string');
+      .map((key: string) => record[key])
+      .find((candidate: unknown) => typeof candidate === 'number' || typeof candidate === 'string');
 
     if (typeof value === 'number') {
       return value;
     }
 
     if (typeof value === 'string') {
-      const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : undefined;
+      const parsedValue = Number(value);
+      return Number.isFinite(parsedValue) ? parsedValue : undefined;
     }
 
     return undefined;
+  }
+
+  private pickStringArray(record: Record<string, unknown>, keys: string[]): string[] {
+    const value = keys
+      .map((key: string) => record[key])
+      .find((candidate: unknown) => Array.isArray(candidate));
+
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0);
   }
 
   private pickTheme(category: string, location: string, name: string): string {
