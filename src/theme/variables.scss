@@ -18,20 +18,24 @@
   --ion-color-success-tint: #6badeb;
 
   --ion-background-color: #eef5ff;
-  --ion-text-color: #1d3557;
+  --ion-text-color: #15304f;
   --ion-font-family: "Manrope", sans-serif;
 
   --app-font-heading: "Outfit", sans-serif;
   --app-font-body: "Manrope", sans-serif;
   --app-page-bg: #eef5ff;
   --app-page-gradient:
-    radial-gradient(circle at top right, rgba(156, 214, 255, 0.52), transparent 34%),
-    radial-gradient(circle at top left, rgba(110, 171, 255, 0.42), transparent 30%),
-    linear-gradient(180deg, #f8fbff 0%, #e8f2ff 100%);
-  --app-surface: rgba(255, 255, 255, 0.92);
+    radial-gradient(circle at 14% 12%, rgba(255, 214, 153, 0.24), transparent 22%),
+    radial-gradient(circle at 86% 14%, rgba(122, 189, 255, 0.44), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(136, 189, 255, 0.2), transparent 34%),
+    linear-gradient(180deg, #fbfdff 0%, #edf5ff 52%, #e7f1ff 100%);
+  --app-surface: rgba(255, 255, 255, 0.94);
   --app-surface-strong: #ffffff;
-  --app-border: rgba(105, 140, 184, 0.2);
-  --app-text-muted: #637b9c;
-  --app-shadow-soft: 0 24px 60px rgba(44, 86, 140, 0.18);
-  --app-shadow-card: 0 18px 34px rgba(62, 100, 150, 0.14);
+  --app-border: rgba(93, 126, 170, 0.18);
+  --app-text-muted: #5f7698;
+  --app-shadow-soft: 0 26px 64px rgba(36, 74, 123, 0.16);
+  --app-shadow-card: 0 18px 38px rgba(46, 83, 132, 0.14);
+  --app-shadow-strong: 0 26px 56px rgba(32, 70, 117, 0.18);
+  --app-accent-warm: #f3b55d;
+  --app-accent-warm-rgb: 243, 181, 93;
 }

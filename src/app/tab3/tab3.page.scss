@@ -11,6 +11,27 @@
   text-transform: uppercase;
 }
 
+.favorites-hero {
+  margin-bottom: 18px;
+  overflow: hidden;
+  padding: 22px;
+  color: #ffffff;
+  box-shadow: var(--app-shadow-strong);
+
+  &::after {
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(24, 47, 84, 0.26) 56%, rgba(15, 31, 58, 0.82) 100%),
+      radial-gradient(circle at 18% 100%, rgba(245, 183, 92, 0.22), transparent 28%);
+  }
+}
+
+.favorites-header,
+.summary-strip,
+.favorite-cities {
+  position: relative;
+  z-index: 1;
+}
+
 .favorites-header {
   margin-bottom: 18px;
 
@@ -19,11 +40,15 @@
     font-size: 2rem;
     font-weight: 800;
   }
+
+  .eyebrow {
+    color: rgba(255, 255, 255, 0.82);
+  }
 }
 
 .header-copy {
   margin: 0;
-  color: var(--app-text-muted);
+  color: rgba(243, 248, 255, 0.84);
   line-height: 1.55;
 }
 
@@ -31,12 +56,14 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 18px;
 }
 
 .summary-card {
   padding: 18px;
   text-align: center;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
 
   strong {
     display: block;
@@ -47,9 +74,56 @@
   span {
     display: block;
     margin-top: 6px;
-    color: var(--app-text-muted);
+    color: rgba(244, 249, 255, 0.8);
     font-size: 0.84rem;
     font-weight: 700;
+  }
+}
+
+.favorite-cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+  }
+}
+
+.favorites-spotlight {
+  margin-bottom: 18px;
+  padding: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 250, 255, 0.74));
+
+  p {
+    margin: 10px 0 16px;
+    color: var(--app-text-muted);
+    line-height: 1.6;
+  }
+
+  ion-button {
+    --border-radius: 16px;
+  }
+}
+
+.favorites-spotlight__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  h2 {
+    margin: 8px 0 0;
+    font-size: 1.45rem;
   }
 }
 
@@ -59,9 +133,14 @@
   padding: 0;
   overflow: hidden;
   text-align: left;
+  transition: transform 220ms ease;
 
   & + .favorite-card {
     margin-top: 14px;
+  }
+
+  &:active {
+    transform: scale(0.99);
   }
 }
 

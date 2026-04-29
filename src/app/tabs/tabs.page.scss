@@ -7,39 +7,77 @@
 .app-tab-bar {
   margin: 0 14px calc(env(safe-area-inset-bottom) + 10px);
   width: calc(100% - 28px);
-  padding: 10px 8px 8px;
-  border-radius: 30px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 22px 40px rgba(58, 87, 121, 0.2);
-  backdrop-filter: blur(18px);
-  border: 1px solid rgba(109, 136, 168, 0.18);
+  padding: 10px 8px 9px;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 250, 255, 0.92));
+  box-shadow: var(--app-shadow-strong);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(109, 136, 168, 0.16);
 }
 
 ion-tab-button {
+  --tab-accent: #4a96eb;
   --color: #8091a7;
-  --color-selected: #4a96eb;
+  --color-selected: var(--tab-accent);
   min-height: 60px;
   border-radius: 22px;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   position: relative;
+  overflow: hidden;
+  transition: transform 180ms ease;
 
   ion-icon {
-    font-size: 1.2rem;
+    width: 34px;
+    height: 34px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 1.05rem;
     margin-bottom: 4px;
+    background: rgba(237, 243, 252, 0.88);
+    color: var(--tab-accent);
+    transition: background 180ms ease, color 180ms ease, transform 180ms ease;
   }
 
   &.tab-selected {
     background: linear-gradient(180deg, rgba(74, 150, 235, 0.12), rgba(74, 150, 235, 0.02));
+
+    ion-icon {
+      background: linear-gradient(135deg, var(--tab-accent), var(--tab-accent));
+      color: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 12px 22px rgba(74, 150, 235, 0.24);
+    }
   }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+ion-tab-button:nth-child(2) {
+  --tab-accent: #6da98f;
+}
+
+ion-tab-button:nth-child(3) {
+  --tab-accent: #d96b72;
+}
+
+ion-tab-button:nth-child(4) {
+  --tab-accent: #7f95c8;
+}
+
+ion-tab-button:nth-child(5) {
+  --tab-accent: #91a0c6;
 }
 
 .with-badge {
   .tab-badge {
     position: absolute;
-    top: 3px;
-    right: 18px;
+    top: 5px;
+    right: 16px;
     min-width: 18px;
     height: 18px;
     padding: 0 5px;
@@ -51,5 +89,6 @@ ion-tab-button {
     font-size: 0.66rem;
     font-weight: 800;
     z-index: 2;
+    box-shadow: 0 10px 18px rgba(74, 150, 235, 0.28);
   }
 }

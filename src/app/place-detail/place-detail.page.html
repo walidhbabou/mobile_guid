@@ -10,9 +10,36 @@
         <h1>{{ currentPlace.name }}</h1>
       </div>
 
-      <button type="button" class="circle-button" routerLink="/tabs/map">
-        <ion-icon name="map-outline"></ion-icon>
-      </button>
+      <div class="detail-topbar__actions">
+        <button
+          type="button"
+          class="circle-button"
+          [routerLink]="['/tabs/map']"
+          [queryParams]="buildMapQueryParams(currentPlace)"
+        >
+          <ion-icon name="map-outline"></ion-icon>
+        </button>
+
+        <button
+          type="button"
+          class="circle-button"
+          [class.circle-button--active]="isFavorite"
+          [disabled]="isFavoriteLoading"
+          (click)="toggleFavorite()"
+        >
+          <ion-icon [name]="isFavorite ? 'heart' : 'heart-outline'"></ion-icon>
+        </button>
+
+        <button
+          *ngIf="canEditCurrentPlace(currentPlace)"
+          type="button"
+          class="circle-button"
+          [class.circle-button--active]="isEditing"
+          (click)="isEditing ? cancelEditing() : startEditing()"
+        >
+          <ion-icon [name]="isEditing ? 'close-outline' : 'create-outline'"></ion-icon>
+        </button>
+      </div>
     </section>
 
     <section class="hero-card surface-card">
@@ -24,6 +51,7 @@
           [alt]="currentPlace.name"
           loading="lazy"
           decoding="async"
+          (error)="handlePlaceImageError()"
         />
         <span class="visual-badge">{{ currentPlace.badge }}</span>
         <span class="visual-icon">
@@ -49,37 +77,183 @@
     <section class="info-list surface-card">
       <button type="button" class="info-row">
         <span>Ratings</span>
-        <span>{{ currentPlace.rating }} / 5</span>
+        <div class="info-row__value">
+          <strong>{{ currentPlace.rating ? (currentPlace.rating + ' / 5') : 'Nouveau' }}</strong>
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
       </button>
 
       <button type="button" class="info-row">
         <span>Horaires & acces</span>
-        <span>{{ currentPlace.hours }}</span>
+        <div class="info-row__value">
+          <strong>{{ currentPlace.hours }}</strong>
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
       </button>
 
       <button type="button" class="info-row">
-        <span>Adresse</span>
-        <span>{{ currentPlace.address }}</span>
+        <span>Les Avis ({{ currentPlace.reviewsCount }})</span>
+        <div class="info-row__value">
+          <strong>{{ currentPlace.category }}</strong>
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </div>
       </button>
+    </section>
+
+    <section class="surface-card favorite-feedback" *ngIf="favoriteMessage">
+      <p>{{ favoriteMessage }}</p>
+    </section>
+
+    <section class="surface-card editor-card" *ngIf="canEditCurrentPlace(currentPlace)">
+      <div class="section-heading">
+        <h2>Informations du lieu</h2>
+        <ion-button
+          size="small"
+          fill="outline"
+          *ngIf="!isEditing"
+          (click)="startEditing()"
+        >
+          Modifier
+        </ion-button>
+      </div>
+
+      <ng-container *ngIf="!isEditing; else editPlaceForm">
+        <div class="detail-summary">
+          <div>
+            <span>Ville</span>
+            <strong>{{ currentPlace.location }}</strong>
+          </div>
+          <div>
+            <span>Categorie</span>
+            <strong>{{ currentPlace.category }}</strong>
+          </div>
+          <div>
+            <span>Adresse</span>
+            <strong>{{ currentPlace.address }}</strong>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-template #editPlaceForm>
+        <div class="editor-grid">
+          <label class="editor-field">
+            <span>Nom</span>
+            <input type="text" [(ngModel)]="editForm.name" placeholder="Nom du lieu" />
+          </label>
+
+          <label class="editor-field">
+            <span>Ville</span>
+            <input type="text" [(ngModel)]="editForm.location" placeholder="Ville" />
+          </label>
+
+          <label class="editor-field">
+            <span>Categorie</span>
+            <input type="text" [(ngModel)]="editForm.category" placeholder="Categorie" />
+          </label>
+
+          <label class="editor-field">
+            <span>Adresse</span>
+            <textarea rows="2" [(ngModel)]="editForm.address" placeholder="Adresse"></textarea>
+          </label>
+
+          <label class="editor-field editor-field--full">
+            <span>Description</span>
+            <textarea rows="5" [(ngModel)]="editForm.description" placeholder="Description du lieu"></textarea>
+          </label>
+
+          <label class="editor-field editor-field--full">
+            <span>Image URL</span>
+            <input type="url" [(ngModel)]="editForm.imageUrl" placeholder="https://..." />
+          </label>
+        </div>
+
+        <div class="editor-actions">
+          <ion-button size="small" fill="outline" (click)="cancelEditing()">Annuler</ion-button>
+          <ion-button size="small" [disabled]="isSaving" (click)="savePlaceChanges()">
+            <ion-spinner *ngIf="isSaving" name="crescent"></ion-spinner>
+            <span *ngIf="!isSaving">Enregistrer</span>
+          </ion-button>
+        </div>
+      </ng-template>
+    </section>
+
+    <section class="surface-card favorite-feedback" *ngIf="saveMessage">
+      <p>{{ saveMessage }}</p>
     </section>
 
     <section class="audio-card glass-card">
       <div class="audio-card__header">
         <div>
-          <p class="eyebrow">Audio guide</p>
-          <h2>Ecoutez la description audio</h2>
+          <p class="eyebrow">Guide audio</p>
+          <h2>Ecouter l ambiance du lieu</h2>
         </div>
         <ion-icon name="volume-high-outline"></ion-icon>
       </div>
+
+      <p class="audio-card__copy">{{ currentPlace.longDescription }}</p>
 
       <div class="audio-wave">
         <span *ngFor="let level of audioWave" [style.height.px]="level"></span>
       </div>
 
       <div class="audio-card__footer">
-        <span>02:15</span>
-        <ion-button size="small" routerLink="/tabs/map">Voir sur la carte</ion-button>
+        <span>{{ getAudioDurationLabel(currentPlace) }}</span>
+
+        <div class="audio-card__actions">
+          <ion-button size="small" (click)="toggleAudioGuide()">
+            {{ isAudioPlaying ? 'Arreter audio' : 'Lire audio' }}
+          </ion-button>
+          <ion-button
+            size="small"
+            fill="outline"
+            [routerLink]="['/tabs/map']"
+            [queryParams]="buildMapQueryParams(currentPlace)"
+          >
+            Voir sur la carte
+          </ion-button>
+        </div>
       </div>
+
+      <p class="audio-card__status" *ngIf="audioStatusMessage">{{ audioStatusMessage }}</p>
+    </section>
+
+    <section class="surface-card review-form-card">
+      <div class="section-heading">
+        <h2>{{ hasExistingOwnReview() ? 'Modifier votre avis' : 'Laisser un avis' }}</h2>
+      </div>
+
+      <div class="rating-picker" aria-label="Note du lieu">
+        <button
+          type="button"
+          class="rating-chip"
+          *ngFor="let rating of [1, 2, 3, 4, 5]"
+          [class.rating-chip--active]="reviewRating === rating"
+          (click)="setReviewRating(rating)"
+        >
+          <ion-icon name="star"></ion-icon>
+          <span>{{ rating }}</span>
+        </button>
+      </div>
+
+      <label class="editor-field editor-field--full">
+        <span>Votre commentaire</span>
+        <textarea
+          rows="4"
+          [(ngModel)]="reviewComment"
+          placeholder="Partagez votre experience sur ce lieu"
+        ></textarea>
+      </label>
+
+      <div class="editor-actions">
+        <ion-button size="small" [disabled]="isSubmittingReview" (click)="submitReview()">
+          <ion-spinner *ngIf="isSubmittingReview" name="crescent"></ion-spinner>
+          <span *ngIf="!isSubmittingReview">{{ hasExistingOwnReview() ? 'Mettre a jour' : 'Publier' }}</span>
+        </ion-button>
+      </div>
+    </section>
+
+    <section class="surface-card favorite-feedback" *ngIf="reviewMessage">
+      <p>{{ reviewMessage }}</p>
     </section>
 
     <section class="reviews surface-card">
@@ -119,7 +293,7 @@
       <ng-template #reviewFallback>
         <div class="review-empty">
           <h3>{{ currentPlace.category }}</h3>
-          <p>Aucun avis detaille n est fourni par l API pour ce lieu. Utilisez la carte ou le lien Google Maps pour poursuivre la visite.</p>
+          <p>Aucun avis detaille n a encore ete partage pour ce lieu. Soyez le premier a raconter votre experience.</p>
         </div>
       </ng-template>
     </section>

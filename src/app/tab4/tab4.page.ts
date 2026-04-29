@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { NotificationItem } from '../data/tourism.data';
-import { PlaceCatalogService } from '../services/place-catalog.service';
+import { CoreDataService } from '../services/core-data.service';
 
 @Component({
   selector: 'app-tab4',
@@ -11,11 +11,23 @@ import { PlaceCatalogService } from '../services/place-catalog.service';
 export class Tab4Page {
   notifications: NotificationItem[] = [];
 
-  constructor(private placeCatalogService: PlaceCatalogService) {}
+  constructor(private coreDataService: CoreDataService) {}
 
   ionViewWillEnter() {
-    this.placeCatalogService.getNotifications().subscribe((notifications: NotificationItem[]) => {
+    this.coreDataService.getNotifications().subscribe((notifications: NotificationItem[]) => {
       this.notifications = notifications;
     });
+  }
+
+  get latestNotification(): NotificationItem | null {
+    return this.notifications[0] ?? null;
+  }
+
+  get otherNotifications(): NotificationItem[] {
+    return this.notifications.slice(1);
+  }
+
+  get notificationCount(): number {
+    return this.notifications.length;
   }
 }

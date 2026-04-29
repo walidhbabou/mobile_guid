@@ -1,72 +1,74 @@
 <ion-content [fullscreen]="true" class="home-screen">
   <div class="app-screen">
     <section class="home-topbar">
-      <div>
-        <p class="eyebrow">Bonjour {{ userName }}</p>
+      <div class="home-topbar__copy">
+        <p class="home-greeting">Bonjour <strong>{{ userName }}</strong></p>
         <h1>Guide Touristique Intelligent</h1>
       </div>
 
       <button type="button" class="avatar-button" routerLink="/tabs/notifications">
-        <span>S</span>
-        <span class="avatar-badge">1</span>
+        <span>{{ userInitial }}</span>
+        <span class="avatar-badge" *ngIf="notificationCount">{{ notificationCount }}</span>
       </button>
     </section>
 
-    <section class="ai-search-card surface-card">
-      <div class="ai-search-card__header">
-        <div>
-          <p class="eyebrow">Recherche IA</p>
-          <h2>Trouvez le lieu qu il vous faut</h2>
-        </div>
-
-        <span class="soft-pill">ai-place-service</span>
-      </div>
-
-      <div class="ai-search-shell">
+    <section class="home-search surface-card">
+      <div class="home-search__shell">
         <ion-icon name="sparkles-outline"></ion-icon>
         <ion-input
           [(ngModel)]="searchQuery"
           type="text"
-          placeholder="Ex: une plage calme a Agadir ou une sortie famille a Rabat"
+          placeholder="Rechercher un lieu..."
           (keyup.enter)="searchWithAi()"
         ></ion-input>
 
         <button
           type="button"
+          class="ai-search-button ai-search-button--audio"
+          [class.ai-search-button--recording]="isRecordingAudio"
+          (click)="toggleAudioSearch()"
+          [disabled]="isSearching && !isRecordingAudio"
+        >
+          <ion-icon *ngIf="!isRecordingAudio" name="mic-outline"></ion-icon>
+          <ion-icon *ngIf="isRecordingAudio" name="stop-circle-outline"></ion-icon>
+        </button>
+
+        <button
+          type="button"
           class="ai-search-button"
           (click)="searchWithAi()"
-          [disabled]="isSearching || !searchQuery.trim()"
+          [disabled]="isSearching || isRecordingAudio || !searchQuery.trim()"
         >
           <ion-spinner *ngIf="isSearching" name="crescent"></ion-spinner>
           <ion-icon *ngIf="!isSearching" name="arrow-forward-outline"></ion-icon>
         </button>
       </div>
 
-      <div class="ai-search-suggestions">
-        <button
-          type="button"
-          class="soft-pill"
-          *ngFor="let prompt of activePrompts"
-          (click)="useSuggestedPrompt(prompt)"
-        >
-          {{ prompt }}
-        </button>
-      </div>
+      <p class="home-search__feedback" *ngIf="searchLocationMessage">
+        {{ searchLocationMessage }}
+      </p>
+
+      <p class="home-search__feedback" *ngIf="audioSearchMessage">
+        {{ audioSearchMessage }}
+      </p>
     </section>
 
     <section class="ai-results-section" *ngIf="hasSearched">
       <div class="section-heading">
-        <h2>Resultats {{ searchMode === 'ai' ? 'IA' : 'suggeres' }}</h2>
+        <div>
+          <h2>{{ resultSectionTitle }}</h2>
+          <p class="section-heading__copy">{{ searchResultSummary }}</p>
+        </div>
         <button type="button" (click)="clearSearch()">Effacer</button>
       </div>
 
       <p class="ai-search-note" *ngIf="searchMode === 'fallback' && searchResults.length">
-        ai-place-service n a pas repondu pour cette recherche. L app affiche des suggestions locales proches de votre besoin.
+        L assistant n a pas pu finaliser cette demande. L application vous propose des adresses locales proches de votre besoin.
       </p>
 
       <section
         class="assistant-response-card surface-card"
-        *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.transcribedQuery"
+        *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.positionNote || searchExperience?.transcribedQuery"
       >
         <div class="assistant-response-card__meta">
           <span class="soft-pill" *ngIf="searchExperience?.inputMode === 'audio'">Question audio analysee</span>
@@ -79,7 +81,11 @@
           "{{ searchExperience?.transcribedQuery }}"
         </p>
 
-        <p class="assistant-response-card__body">
+        <p class="assistant-response-card__body" *ngIf="searchExperience?.positionNote">
+          {{ searchExperience?.positionNote }}
+        </p>
+
+        <p class="assistant-response-card__body" *ngIf="searchExperience?.assistantReply || searchExperience?.message">
           {{ searchExperience?.assistantReply || searchExperience?.message }}
         </p>
       </section>
@@ -93,6 +99,15 @@
         >
           <strong>{{ card.title }}</strong>
           <p>{{ card.description }}</p>
+          <span *ngIf="card.timeSlot || card.durationMinutes || (card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined)">
+            <ng-container *ngIf="card.timeSlot">{{ card.timeSlot }}</ng-container>
+            <ng-container *ngIf="card.timeSlot && card.durationMinutes"> · </ng-container>
+            <ng-container *ngIf="card.durationMinutes">~{{ card.durationMinutes }} min</ng-container>
+            <ng-container *ngIf="(card.timeSlot || card.durationMinutes) && (card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined)"> · </ng-container>
+            <ng-container *ngIf="card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined">
+              {{ card.budgetMinMad }}-{{ card.budgetMaxMad }} MAD
+            </ng-container>
+          </span>
           <span>{{ card.query || 'Relancer cette recherche' }}</span>
         </button>
       </section>
@@ -119,6 +134,9 @@
           <div class="ai-result-card__body">
             <div class="ai-result-card__meta">
               <span class="soft-pill">{{ result.category }}</span>
+              <span class="soft-pill" *ngIf="result.distanceKm !== undefined">
+                A {{ result.distanceKm | number:'1.1-1' }} km
+              </span>
               <span class="rating-text" *ngIf="result.rating">
                 <strong>{{ result.rating }}</strong>
                 <span>/ 5</span>
@@ -133,8 +151,13 @@
               <ion-button *ngIf="result.routeId" size="small" [routerLink]="['/tabs/place', result.routeId]">
                 Voir la fiche
               </ion-button>
-              <ion-button size="small" fill="outline" routerLink="/tabs/map">
-                Voir la carte
+              <ion-button
+                size="small"
+                fill="outline"
+                [routerLink]="['/tabs/map']"
+                [queryParams]="buildMapQueryParamsForResult(result)"
+              >
+                Voir sur la carte
               </ion-button>
             </div>
           </div>
@@ -149,10 +172,6 @@
         </div>
       </ng-template>
     </section>
-
-    <div class="filter-row">
-      <span class="soft-pill" *ngFor="let filter of quickFilters">{{ filter }}</span>
-    </div>
 
     <section class="section-heading">
       <h2>Lieux populaires</h2>
@@ -197,20 +216,19 @@
       </button>
     </div>
 
-    <button type="button" class="voice-banner" routerLink="/tabs/map">
-      <ion-icon name="mic-circle-outline"></ion-icon>
+    <button
+      type="button"
+      class="voice-banner"
+      [class.voice-banner--recording]="isRecordingAudio"
+      (click)="toggleAudioSearch()"
+      [disabled]="isSearching && !isRecordingAudio"
+    >
+      <ion-icon [name]="isRecordingAudio ? 'stop-circle-outline' : 'mic-circle-outline'"></ion-icon>
       <div>
-        <strong>Recherche vocale</strong>
-        <span>Dites "Montre-moi Rabat"</span>
+        <strong>{{ isRecordingAudio ? 'Enregistrement en cours' : 'Recherche Vocale' }}</strong>
+        <span>{{ isRecordingAudio ? 'Touchez pour envoyer votre demande' : 'Touchez pour lancer une recherche a la voix' }}</span>
       </div>
       <ion-icon name="chevron-forward-outline"></ion-icon>
     </button>
-
-    <section class="story-card glass-card" *ngIf="highlightPlace as place">
-      <p class="eyebrow">Suggestion</p>
-      <h2>{{ place.name }}</h2>
-      <p>{{ place.shortDescription }}</p>
-      <ion-button size="small" [routerLink]="['/tabs/place', place.id]">Voir la fiche</ion-button>
-    </section>
   </div>
 </ion-content>

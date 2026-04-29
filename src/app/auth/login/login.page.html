@@ -1,121 +1,75 @@
-<ion-content [fullscreen]="true" class="auth-screen">
-  <div class="auth-shell">
-    <div class="auth-ambient" aria-hidden="true">
-      <span class="auth-ambient__orb auth-ambient__orb--one"></span>
-      <span class="auth-ambient__orb auth-ambient__orb--two"></span>
-      <span class="auth-ambient__orb auth-ambient__orb--three"></span>
-    </div>
-
-    <section class="auth-hero">
-      <div class="auth-hero__backdrop scenic-visual">
-        <div class="auth-hero__copy">
-          <span class="hero-tag">Guide smart premium</span>
-          <h1>Une connexion qui donne envie de voyager.</h1>
-          <p>Retrouvez vos parcours, vos favoris et vos recommandations avec une experience plus elegante et plus vivante.</p>
-        </div>
-
-        <div class="hero-metrics">
-          <article class="hero-metric hero-metric--glass">
-            <strong>24/7</strong>
-            <span>Suggestions intelligentes</span>
-          </article>
-
-          <article class="hero-metric hero-metric--accent">
-            <ion-icon name="sparkles-outline"></ion-icon>
-            <div>
-              <strong>120+</strong>
-              <span>Itineraires inspires</span>
-            </div>
-          </article>
-        </div>
-
-        <div class="hero-highlights">
-          <span><ion-icon name="location-outline"></ion-icon>Chefchaouen</span>
-          <span><ion-icon name="compass-outline"></ion-icon>Rabat</span>
-          <span><ion-icon name="sunny-outline"></ion-icon>Agadir</span>
-        </div>
+<ion-content [fullscreen]="true" class="simple-auth-screen login-screen">
+  <div class="simple-auth">
+    <section class="brand-block">
+      <div class="brand-mark">
+        <img src="assets/logo.jpg" alt="Atlas Guide" class="brand-mark__image" />
       </div>
+
+      <p>Explorez le Maroc intelligemment</p>
     </section>
 
-    <section class="auth-card surface-card">
-      <div class="auth-card__header">
-        <div class="auth-card__headline">
-          <p class="eyebrow">Connexion</p>
-          <h2>Reprenez votre exploration</h2>
-          <p>Profitez d un acces rapide, securise et plus immersif des votre arrivee sur l application.</p>
-        </div>
-
-        <button type="button" class="demo-link" (click)="fillDemoAccount()">
-          Compte demo
-        </button>
-      </div>
-
-      <div class="auth-trustbar">
-        <span><ion-icon name="shield-checkmark-outline"></ion-icon>Securise</span>
-        <span><ion-icon name="flash-outline"></ion-icon>Fluide</span>
-        <span><ion-icon name="earth-outline"></ion-icon>100% Maroc</span>
+    <section class="auth-panel">
+      <div class="auth-panel__header">
+        <h2>Connexion</h2>
+        <p>Retrouvez vos favoris et vos parcours en quelques secondes.</p>
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="login()" class="auth-form">
         <label class="field">
-          <span class="field__label">Email ou nom d utilisateur</span>
           <div class="field__shell">
-            <ion-icon name="mail-outline"></ion-icon>
-            <ion-input formControlName="identifier" type="text" placeholder="sophie@guide.ma ou user"></ion-input>
+            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
+            <ion-input
+              formControlName="identifier"
+              type="text"
+              autocomplete="username"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Ibendo"
+            ></ion-input>
           </div>
-          <small class="error-text" *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched">
-            Entrez votre email ou votre nom d utilisateur.
+          <small
+            class="error-text"
+            *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched"
+          >
+            Entrez votre e-mail ou votre identifiant.
           </small>
         </label>
 
         <label class="field">
-          <span class="field__label">Mot de passe</span>
           <div class="field__shell">
-            <ion-icon name="lock-closed-outline"></ion-icon>
+            <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
             <ion-input
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
-              placeholder="2002"
+              autocomplete="current-password"
+              placeholder="Mot de passe"
             ></ion-input>
             <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
               <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small class="error-text" *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+          <small
+            class="error-text"
+            *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
+          >
             Utilisez au moins 4 caracteres.
           </small>
         </label>
 
-        <div class="meta-row">
-          <label class="check-row">
-            <ion-checkbox formControlName="rememberMe"></ion-checkbox>
-            <span>Rester connecte</span>
-          </label>
-
-          <button type="button" class="text-link" (click)="goToForgotPassword()">
-            Mot de passe oublie ?
-          </button>
-        </div>
+        <button type="button" class="text-link panel-link" (click)="goToForgotPassword()">
+          Mot de passe oublie ?
+        </button>
 
         <ion-button type="submit" expand="block" class="primary-cta" [disabled]="isLoading">
           <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
-          <span *ngIf="!isLoading">Connexion</span>
+          <span *ngIf="!isLoading">Se connecter</span>
         </ion-button>
       </form>
 
-      <div class="separator">
-        <span>ou</span>
-      </div>
-
-      <ion-button expand="block" fill="outline" class="secondary-cta" (click)="loginWithGoogle()">
-        <ion-icon slot="start" name="logo-google"></ion-icon>
-        Connexion avec Google
-      </ion-button>
-
       <p class="auth-footer">
-        Vous n avez pas de compte ?
+        Pas encore de compte ?
         <button type="button" class="text-link strong-link" (click)="goToSignup()">
-          Inscrivez-vous
+          Creer un compte
         </button>
       </p>
     </section>

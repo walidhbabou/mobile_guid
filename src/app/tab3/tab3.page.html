@@ -1,24 +1,24 @@
 <ion-content [fullscreen]="true" class="favorites-screen">
-  <div class="app-screen">
-    <section class="favorites-header">
-      <p class="eyebrow">Favoris</p>
-      <h1>Vos lieux inspires</h1>
-      <p class="header-copy">Gardez sous la main les destinations que vous voulez visiter plus tard.</p>
-    </section>
+  <div class="app-screen">  
 
-    <section class="summary-strip">
-      <article class="summary-card glass-card">
-        <strong>{{ viewedPlacesCount }}</strong>
-        <span>Lieux visibles</span>
-      </article>
-
-      <article class="summary-card glass-card">
-        <strong>{{ coveredCitiesCount }}</strong>
-        <span>Villes couvertes</span>
-      </article>
+    <section class="favorites-spotlight glass-card" *ngIf="latestFavorite as place">
+      <div class="favorites-spotlight__top">
+        <div>
+          <p class="eyebrow">Dernier enregistre</p>
+          <h2>{{ place.name }}</h2>
+        </div>
+        <span class="soft-pill">{{ place.category }}</span>
+      </div>
+      <p>{{ place.shortDescription }}</p>
+      <ion-button size="small" [routerLink]="['/tabs/place', place.id]">Ouvrir la fiche</ion-button>
     </section>
 
     <ng-container *ngIf="favoritePlaces.length; else emptyFavoritesState">
+      <section class="section-heading section-heading--stacked">
+        <h2>Votre collection</h2>
+        <p>Des cartes visuelles pour reprendre la lecture d un lieu en un instant.</p>
+      </section>
+
       <button
         type="button"
         class="favorite-card surface-card"
@@ -33,6 +33,7 @@
             [alt]="place.name"
             loading="lazy"
             decoding="async"
+            (error)="handlePlaceImageError(place)"
           />
           <span class="visual-badge">{{ place.badge }}</span>
           <span class="visual-icon">
@@ -61,8 +62,8 @@
 
     <ng-template #emptyFavoritesState>
       <section class="surface-card empty-favorites-state">
-        <h2>Pas encore de lieu consulte</h2>
-        <p>Ouvrez une fiche detaillee ou lancez une recherche pour voir apparaitre vos lieux recents ici.</p>
+        <h2>Aucun favori pour le moment</h2>
+        <p>Ouvrez une fiche detaillee puis utilisez le coeur pour commencer a composer votre carnet d adresses.</p>
       </section>
     </ng-template>
   </div>

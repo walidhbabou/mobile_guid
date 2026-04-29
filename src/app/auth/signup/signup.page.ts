@@ -83,6 +83,7 @@ export class SignupPage implements OnInit {
         response.email || email,
         response.fullName || fullName
       );
+      await firstValueFrom(this.authService.resolveCurrentUserId(true));
 
       await this.showToast('Inscription reussie, votre guide est pret.', 'success');
       await this.router.navigateByUrl('/tabs/home', { replaceUrl: true });

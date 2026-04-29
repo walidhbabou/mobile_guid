@@ -1,141 +1,120 @@
-<ion-content [fullscreen]="true" class="signup-screen auth-screen">
-  <div class="auth-shell signup-shell">
-    <div class="auth-ambient" aria-hidden="true">
-      <span class="auth-ambient__orb auth-ambient__orb--one"></span>
-      <span class="auth-ambient__orb auth-ambient__orb--two"></span>
-      <span class="auth-ambient__orb auth-ambient__orb--three"></span>
-    </div>
-
-    <section class="auth-hero">
-      <div class="auth-hero__backdrop scenic-visual signup-hero-visual">
-        <div class="auth-hero__copy">
-          <span class="hero-tag">Guide smart premium</span>
-          <h1>Creez votre espace et demarrez le voyage.</h1>
-          <p>Gardez vos favoris, vos parcours audio et vos suggestions dans une interface plus moderne, plus claire et plus attirante.</p>
-        </div>
-
-        <div class="hero-metrics">
-          <article class="hero-metric hero-metric--glass">
-            <strong>1 min</strong>
-            <span>Inscription rapide</span>
-          </article>
-
-          <article class="hero-metric hero-metric--accent">
-            <ion-icon name="person-add-outline"></ion-icon>
-            <div>
-              <strong>Profil+</strong>
-              <span>Experience personnalisee</span>
-            </div>
-          </article>
-        </div>
-
-        <div class="hero-highlights">
-          <span><ion-icon name="heart-outline"></ion-icon>Favoris</span>
-          <span><ion-icon name="map-outline"></ion-icon>Carte</span>
-          <span><ion-icon name="headset-outline"></ion-icon>Audio</span>
-        </div>
+<ion-content [fullscreen]="true" class="simple-auth-screen signup-screen">
+  <div class="simple-auth">
+    <section class="brand-block">
+      <div class="brand-mark">
+        <img src="assets/logo.jpg" alt="Atlas Guide" class="brand-mark__image" />
       </div>
+
+      <p>Explorez le Maroc intelligemment</p>
     </section>
 
-    <section class="auth-card surface-card signup-card">
-      <div class="auth-card__header">
-        <div class="auth-card__headline">
-          <p class="eyebrow">Inscription</p>
-          <h2>Entrez dans votre espace guide</h2>
-          <p>Creez un compte pour sauvegarder vos sorties, retrouver vos adresses preferees et acceder a une experience plus fluide.</p>
-        </div>
-
-        <button type="button" class="demo-link" (click)="goToLogin()">
-          Se connecter
-        </button>
+    <section class="auth-panel">
+      <div class="auth-panel__header">
+        <h2>Creation de compte</h2>
+        <p>Creez votre espace pour sauvegarder vos lieux et vos parcours.</p>
       </div>
 
-      <div class="auth-trustbar">
-        <span><ion-icon name="shield-checkmark-outline"></ion-icon>Confidentiel</span>
-        <span><ion-icon name="sparkles-outline"></ion-icon>Personnalise</span>
-        <span><ion-icon name="rocket-outline"></ion-icon>Rapide</span>
-      </div>
-
-      <form [formGroup]="signupForm" (ngSubmit)="signup()" class="auth-form signup-form">
-        <div class="field-row">
-          <label class="field">
-            <span class="field__label">Prenom</span>
-            <div class="field__shell">
-              <ion-icon name="person-outline"></ion-icon>
-              <ion-input formControlName="firstName" type="text" placeholder="Sophie"></ion-input>
-            </div>
-            <small class="error-text" *ngIf="signupForm.get('firstName')?.invalid && signupForm.get('firstName')?.touched">
-              Minimum 2 caracteres.
-            </small>
-          </label>
-
-          <label class="field">
-            <span class="field__label">Nom</span>
-            <div class="field__shell">
-              <ion-icon name="person-outline"></ion-icon>
-              <ion-input formControlName="lastName" type="text" placeholder="Dubois"></ion-input>
-            </div>
-            <small class="error-text" *ngIf="signupForm.get('lastName')?.invalid && signupForm.get('lastName')?.touched">
-              Minimum 2 caracteres.
-            </small>
-          </label>
-        </div>
+      <form [formGroup]="signupForm" (ngSubmit)="signup()" class="auth-form">
+        <label class="field">
+          <div class="field__shell">
+            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
+            <ion-input formControlName="firstName" type="text" placeholder="Prenom"></ion-input>
+          </div>
+          <small
+            class="error-text"
+            *ngIf="signupForm.get('firstName')?.invalid && signupForm.get('firstName')?.touched"
+          >
+            Minimum 2 caracteres.
+          </small>
+        </label>
 
         <label class="field">
-          <span class="field__label">Adresse e-mail</span>
           <div class="field__shell">
-            <ion-icon name="mail-outline"></ion-icon>
-            <ion-input formControlName="email" type="email" placeholder="sophie@guide.ma"></ion-input>
+            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
+            <ion-input formControlName="lastName" type="text" placeholder="Nom"></ion-input>
           </div>
-          <small class="error-text" *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched">
+          <small
+            class="error-text"
+            *ngIf="signupForm.get('lastName')?.invalid && signupForm.get('lastName')?.touched"
+          >
+            Minimum 2 caracteres.
+          </small>
+        </label>
+
+        <label class="field">
+          <div class="field__shell">
+            <ion-icon name="mail-outline" aria-hidden="true"></ion-icon>
+            <ion-input
+              formControlName="email"
+              type="email"
+              autocomplete="email"
+              placeholder="Adresse e-mail"
+            ></ion-input>
+          </div>
+          <small
+            class="error-text"
+            *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched"
+          >
             Entrez une adresse valide.
           </small>
         </label>
 
         <label class="field">
-          <span class="field__label">Mot de passe</span>
           <div class="field__shell">
-            <ion-icon name="lock-closed-outline"></ion-icon>
+            <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
             <ion-input
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
-              placeholder="Au moins 6 caracteres"
+              autocomplete="new-password"
+              placeholder="Mot de passe"
             ></ion-input>
             <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
               <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small class="error-text" *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched">
+          <small
+            class="error-text"
+            *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched"
+          >
             Utilisez au moins 6 caracteres.
           </small>
         </label>
 
         <label class="field">
-          <span class="field__label">Confirmer le mot de passe</span>
           <div class="field__shell">
-            <ion-icon name="shield-checkmark-outline"></ion-icon>
+            <ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon>
             <ion-input
               formControlName="confirmPassword"
               [type]="showConfirmPassword ? 'text' : 'password'"
-              placeholder="Retapez le mot de passe"
+              autocomplete="new-password"
+              placeholder="Confirmer le mot de passe"
             ></ion-input>
             <button type="button" class="icon-button" (click)="toggleConfirmPasswordVisibility()">
               <ion-icon [name]="showConfirmPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small class="error-text" *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched">
+          <small
+            class="error-text"
+            *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched"
+          >
             Confirmation requise.
           </small>
-          <small class="error-text" *ngIf="signupForm.hasError('passwordMismatch') && signupForm.get('confirmPassword')?.touched">
+          <small
+            class="error-text"
+            *ngIf="signupForm.hasError('passwordMismatch') && signupForm.get('confirmPassword')?.touched"
+          >
             Les mots de passe ne correspondent pas.
           </small>
         </label>
 
-        <label class="check-row terms-row">
+        <label class="check-row">
           <ion-checkbox formControlName="agreeToTerms"></ion-checkbox>
-          <span>J accepte les conditions d utilisation et les recommandations personnalisees.</span>
+          <span>J'accepte les conditions d'utilisation.</span>
         </label>
-        <small class="error-text" *ngIf="signupForm.get('agreeToTerms')?.invalid && signupForm.get('agreeToTerms')?.touched">
+        <small
+          class="error-text"
+          *ngIf="signupForm.get('agreeToTerms')?.invalid && signupForm.get('agreeToTerms')?.touched"
+        >
           Vous devez accepter les conditions.
         </small>
 
@@ -147,7 +126,9 @@
 
       <p class="auth-footer">
         Vous avez deja un compte ?
-        <button type="button" class="text-link strong-link" (click)="goToLogin()">Se connecter</button>
+        <button type="button" class="text-link strong-link" (click)="goToLogin()">
+          Se connecter
+        </button>
       </p>
     </section>
   </div>

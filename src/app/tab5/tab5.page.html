@@ -1,6 +1,6 @@
 <ion-content [fullscreen]="true" class="profile-screen">
   <div class="app-screen">
-    <section class="profile-card surface-card">
+    <section class="profile-card surface-card scenic-visual theme-rabat">
       <div class="profile-card__top">
         <div class="profile-avatar">{{ userInitial }}</div>
 
@@ -14,6 +14,12 @@
       <div class="badge-row" *ngIf="profileBadges.length">
         <span class="soft-pill" *ngFor="let badge of profileBadges">{{ badge }}</span>
       </div>
+
+      <section class="profile-highlight glass-card" *ngIf="primaryAction as action">
+        <p class="eyebrow">En ce moment</p>
+        <h2>{{ action.title }}</h2>
+        <p>{{ action.subtitle }}</p>
+      </section>
     </section>
 
     <section class="stats-grid">
@@ -23,12 +29,81 @@
       </article>
     </section>
 
-    <section class="actions surface-card" *ngIf="profileActions.length">
+    <section class="surface-card editor-card">
+      <div class="section-heading">
+        <h2>Informations personnelles</h2>
+        <span class="section-hint" *ngIf="isProfileLoading">Chargement...</span>
+      </div>
+
+      <div class="editor-grid">
+        <label class="editor-field editor-field--full">
+          <span>Nom complet</span>
+          <input type="text" [(ngModel)]="profileForm.fullName" placeholder="Votre nom complet" />
+        </label>
+
+        <label class="editor-field">
+          <span>Email</span>
+          <input type="email" [(ngModel)]="profileForm.email" placeholder="nom@exemple.com" />
+        </label>
+
+        <label class="editor-field">
+          <span>Telephone</span>
+          <input type="tel" [(ngModel)]="profileForm.phone" placeholder="+212..." />
+        </label>
+      </div>
+
+      <div class="editor-actions">
+        <ion-button size="small" [disabled]="isProfileSaving" (click)="saveProfile()">
+          <ion-spinner *ngIf="isProfileSaving" name="crescent"></ion-spinner>
+          <span *ngIf="!isProfileSaving">Enregistrer</span>
+        </ion-button>
+      </div>
+    </section>
+
+    <section class="surface-card feedback-card" *ngIf="profileMessage">
+      <p>{{ profileMessage }}</p>
+    </section>
+
+    <section class="surface-card editor-card">
+      <div class="section-heading">
+        <h2>Mot de passe</h2>
+      </div>
+
+      <div class="editor-grid">
+        <label class="editor-field editor-field--full">
+          <span>Mot de passe actuel</span>
+          <input type="password" [(ngModel)]="passwordForm.currentPassword" placeholder="Mot de passe actuel" />
+        </label>
+
+        <label class="editor-field">
+          <span>Nouveau mot de passe</span>
+          <input type="password" [(ngModel)]="passwordForm.newPassword" placeholder="Au moins 6 caracteres" />
+        </label>
+
+        <label class="editor-field">
+          <span>Confirmation</span>
+          <input type="password" [(ngModel)]="passwordForm.confirmPassword" placeholder="Confirmez le mot de passe" />
+        </label>
+      </div>
+
+      <div class="editor-actions">
+        <ion-button size="small" fill="outline" [disabled]="isPasswordSaving" (click)="updatePassword()">
+          <ion-spinner *ngIf="isPasswordSaving" name="crescent"></ion-spinner>
+          <span *ngIf="!isPasswordSaving">Mettre a jour</span>
+        </ion-button>
+      </div>
+    </section>
+
+    <section class="surface-card feedback-card" *ngIf="passwordMessage">
+      <p>{{ passwordMessage }}</p>
+    </section>
+
+    <section class="actions surface-card" *ngIf="secondaryActions.length">
       <div class="section-heading">
         <h2>Mon espace</h2>
       </div>
 
-      <button type="button" class="action-row" *ngFor="let action of profileActions">
+      <button type="button" class="action-row" *ngFor="let action of secondaryActions">
         <div class="action-row__icon">
           <ion-icon [name]="action.icon"></ion-icon>
         </div>

@@ -7,7 +7,9 @@ import { RouterTestingModule } from '@angular/router/testing';
 
 import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
 import { AiPlaceService } from '../services/ai-place.service';
+import { CoreDataService } from '../services/core-data.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
+import { UserLocationService } from '../services/user-location.service';
 
 import { Tab1Page } from './tab1.page';
 
@@ -38,7 +40,19 @@ describe('Tab1Page', () => {
           provide: PlaceCatalogService,
           useValue: {
             getFeaturedPlaces: () => of([]),
-            getQuickFilters: () => of([]),
+          },
+        },
+        {
+          provide: CoreDataService,
+          useValue: {
+            getCategoryLabels: () => of([]),
+            getNotifications: () => of([]),
+          },
+        },
+        {
+          provide: UserLocationService,
+          useValue: {
+            getCurrentLocation: () => Promise.resolve(null),
           },
         },
       ],

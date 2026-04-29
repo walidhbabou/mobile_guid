@@ -1,5 +1,7 @@
 export interface Place {
   id: string;
+  backendId?: number;
+  externalPlaceId?: string;
   name: string;
   location: string;
   rating: number;
@@ -17,6 +19,7 @@ export interface Place {
   starsLabel: string;
   highlights: string[];
   imageUrl?: string;
+  fallbackImageUrl?: string;
   googleMapsUrl?: string;
   latitude?: number;
   longitude?: number;
@@ -25,13 +28,19 @@ export interface Place {
 }
 
 export interface Review {
+  id?: number;
+  userId?: number;
   author: string;
   role: string;
   ratingLabel: string;
+  ratingValue?: number;
   comment: string;
   likes: number;
   replies: number;
   avatar: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isOwnReview?: boolean;
 }
 
 export interface NotificationItem {

@@ -9,7 +9,7 @@ describe('PlaceCatalogService', () => {
   let apiServiceSpy: jasmine.SpyObj<ApiService>;
 
   beforeEach(() => {
-    apiServiceSpy = jasmine.createSpyObj<ApiService>('ApiService', ['getPlaces', 'getPlaceById']);
+    apiServiceSpy = jasmine.createSpyObj<ApiService>('ApiService', ['getPlaces', 'getPlaceById', 'updatePlaceByPlaceId']);
     service = new PlaceCatalogService(apiServiceSpy);
     localStorage.clear();
   });
@@ -68,6 +68,8 @@ describe('PlaceCatalogService', () => {
       expect(places[0].category).toBe('Beach');
       expect(places[0].theme).toBe('theme-agadir');
       expect(places[0].icon).toBe('water-outline');
+      expect(places[0].imageUrl).toContain('maps.googleapis.com/maps/api/streetview');
+      expect(places[0].fallbackImageUrl).toContain('maps.googleapis.com/maps/api/streetview');
       expect(places[0].googleMapsUrl).toBe('https://www.google.com/maps/search/?api=1&query=30.42,-9.6');
     });
   });
@@ -86,6 +88,42 @@ describe('PlaceCatalogService', () => {
     });
 
     expect(apiServiceSpy.getPlaceById).not.toHaveBeenCalled();
+  });
+
+  it('should update a place by its external identifier', () => {
+    apiServiceSpy.updatePlaceByPlaceId.and.returnValue(of({
+      id: 9,
+      place_id: 'cafe-medina',
+      name: 'Cafe Medina',
+      city: 'fes',
+      category: 'cafe',
+      description: 'Nouvelle description.',
+      address: 'Bab Boujloud, Fes',
+      photo_url: 'https://example.com/cafe.jpg',
+    }));
+
+    service.updatePlace(
+      createPlace({
+        id: 'cafe-medina',
+        externalPlaceId: 'cafe-medina',
+      }),
+      {
+        longDescription: 'Nouvelle description.',
+        address: 'Bab Boujloud, Fes',
+        imageUrl: 'https://example.com/cafe.jpg',
+      }
+    ).subscribe((place: Place | null) => {
+      expect(place?.id).toBe('cafe-medina');
+      expect(place?.longDescription).toBe('Nouvelle description.');
+      expect(place?.imageUrl).toBe('https://example.com/cafe.jpg');
+    });
+
+    expect(apiServiceSpy.updatePlaceByPlaceId).toHaveBeenCalledWith('cafe-medina', jasmine.objectContaining({
+      placeId: 'cafe-medina',
+      description: 'Nouvelle description.',
+      address: 'Bab Boujloud, Fes',
+      photoUrl: 'https://example.com/cafe.jpg',
+    }));
   });
 
   it('should fall back to the catalog when the place detail request fails', () => {

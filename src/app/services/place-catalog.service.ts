@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 import { NotificationItem, Place, ProfileAction, ProfileStat } from '../data/tourism.data';
 import { ApiService } from './api.service';
 
@@ -14,6 +15,21 @@ export interface ProfileOverview {
   stats: ProfileStat[];
   actions: ProfileAction[];
   badges: string[];
+}
+
+interface PlaceUpdatePayload {
+  name: string;
+  description: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  rating?: number;
+  types?: string[];
+  photoUrl?: string;
+  placeId: string;
+  googleMapsUrl?: string;
+  city?: string;
+  category?: string;
 }
 
 @Injectable({
@@ -44,6 +60,21 @@ export class PlaceCatalogService {
       catchError(() => this.getPlaces().pipe(
         map((places: Place[]) => places.find((place: Place) => place.id === normalizedId) ?? null)
       ))
+    );
+  }
+
+  updatePlace(place: Place, changes: Partial<Place>): Observable<Place | null> {
+    const placeId = (place.externalPlaceId || place.id || '').trim();
+
+    if (!placeId) {
+      return of(null);
+    }
+
+    const payload = this.buildPlaceUpdatePayload(place, changes);
+
+    return this.apiService.updatePlaceByPlaceId(placeId, payload).pipe(
+      map((response: unknown) => this.normalizePlace(response)),
+      catchError(() => of(null))
     );
   }
 
@@ -104,7 +135,7 @@ export class PlaceCatalogService {
         if (places.length > 0) {
           notifications.push({
             icon: 'compass-outline',
-            title: 'Catalogue synchronise',
+            title: 'Catalogue disponible',
             description: `${places.length} lieux dynamiques sont disponibles dans l application.`,
             time: 'Mis a jour',
             tone: 'success',
@@ -157,7 +188,7 @@ export class PlaceCatalogService {
         actions.push({
           icon: 'map-outline',
           title: 'Catalogue disponible',
-          subtitle: `${places.length} fiches synchronisees depuis l API`,
+          subtitle: `${places.length} fiches sont deja pretes dans votre application`,
         });
 
         return {
@@ -226,6 +257,30 @@ export class PlaceCatalogService {
     });
   }
 
+  buildFallbackImageUrl(details: Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'>): string | undefined {
+    const apiKey = environment.googleMapsApiKey?.trim();
+
+    if (!apiKey) {
+      return undefined;
+    }
+
+    const location = typeof details.latitude === 'number' && typeof details.longitude === 'number'
+      ? `${details.latitude},${details.longitude}`
+      : [details.name, details.address].filter((segment: string | undefined) => !!segment?.trim()).join(', ');
+
+    if (!location) {
+      return undefined;
+    }
+
+    const params = new URLSearchParams({
+      size: '1200x800',
+      location,
+      key: apiKey,
+    });
+
+    return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
+  }
+
   trackPlaceVisit(placeId: string): void {
     const normalizedId = placeId.trim();
 
@@ -268,13 +323,23 @@ export class PlaceCatalogService {
       || `Decouvrez ${name} a ${location}.`;
     const address = this.pickString(record, ['address']) || location;
     const rating = this.pickNumber(record, ['rating', 'score']) ?? 0;
-    const imageUrl = this.pickImageUrl(record);
     const latitude = this.pickNumber(record, ['latitude', 'lat']);
     const longitude = this.pickNumber(record, ['longitude', 'lng', 'lon']);
+    const fallbackImageUrl = this.buildFallbackImageUrl({
+      name,
+      address,
+      latitude,
+      longitude,
+    } as Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'>);
+    const imageUrl = this.pickImageUrl(record) || fallbackImageUrl;
     const googleMapsUrl = this.pickGoogleMapsUrl(record, name, address, latitude, longitude);
+    const backendId = this.pickNumber(record, ['id']);
+    const externalPlaceId = this.pickIdentifier(record, ['place_id', 'placeId']);
 
     return {
-      id: this.pickIdentifier(record, ['place_id', 'placeId', 'id']) || this.slugify(`${name}-${location}-${index}`),
+      id: externalPlaceId || this.pickIdentifier(record, ['id']) || this.slugify(`${name}-${location}-${index}`),
+      backendId,
+      externalPlaceId,
       name,
       location,
       rating,
@@ -292,6 +357,7 @@ export class PlaceCatalogService {
       starsLabel: this.buildStarsLabel(rating),
       highlights: this.buildHighlights(types, location, address),
       imageUrl,
+      fallbackImageUrl,
       googleMapsUrl,
       latitude,
       longitude,
@@ -628,5 +694,28 @@ export class PlaceCatalogService {
 
   private clamp(value: number, minimum: number, maximum: number): number {
     return Math.min(maximum, Math.max(minimum, value));
+  }
+
+  private buildPlaceUpdatePayload(place: Place, changes: Partial<Place>): PlaceUpdatePayload {
+    const nextPlace = {
+      ...place,
+      ...changes,
+    };
+    const normalizedImageUrl = nextPlace.imageUrl?.trim();
+
+    return {
+      name: nextPlace.name.trim(),
+      description: nextPlace.longDescription.trim(),
+      address: nextPlace.address.trim(),
+      ...(typeof nextPlace.latitude === 'number' ? { latitude: nextPlace.latitude } : {}),
+      ...(typeof nextPlace.longitude === 'number' ? { longitude: nextPlace.longitude } : {}),
+      ...(typeof nextPlace.rating === 'number' ? { rating: nextPlace.rating } : {}),
+      ...(nextPlace.types?.length ? { types: nextPlace.types } : {}),
+      ...(normalizedImageUrl && normalizedImageUrl !== nextPlace.fallbackImageUrl ? { photoUrl: normalizedImageUrl } : {}),
+      placeId: (nextPlace.externalPlaceId || nextPlace.id).trim(),
+      ...(nextPlace.googleMapsUrl?.trim() ? { googleMapsUrl: nextPlace.googleMapsUrl.trim() } : {}),
+      ...(nextPlace.location.trim() ? { city: nextPlace.location.trim() } : {}),
+      ...(nextPlace.category.trim() ? { category: nextPlace.category.trim() } : {}),
+    };
   }
 }

@@ -15,10 +15,6 @@ export class LoginPage implements OnInit {
   loginForm!: FormGroup;
   isLoading = false;
   showPassword = false;
-  readonly demoCredentials = {
-    identifier: 'admin',
-    password: '2002',
-  };
 
   constructor(
     private formBuilder: FormBuilder,
@@ -29,7 +25,6 @@ export class LoginPage implements OnInit {
 
   ngOnInit() {
     this.initializeForm();
-    this.fillDemoAccount();
   }
 
   initializeForm() {
@@ -62,6 +57,7 @@ export class LoginPage implements OnInit {
         response.email || identifier,
         response.fullName || this.buildDisplayName(response.username || identifier)
       );
+      await firstValueFrom(this.authService.resolveCurrentUserId(true));
 
       await this.showToast('Connexion reussie, bon voyage !', 'success');
       await this.router.navigateByUrl('/tabs/home', { replaceUrl: true });
@@ -76,8 +72,7 @@ export class LoginPage implements OnInit {
   }
 
   loginWithGoogle() {
-    this.fillDemoAccount();
-    this.showToast('Compte demo Google prepare.', 'primary');
+    this.showToast('La connexion Google sera disponible tres bientot.', 'primary');
   }
 
   togglePasswordVisibility() {
@@ -90,14 +85,6 @@ export class LoginPage implements OnInit {
 
   goToSignup() {
     void this.router.navigateByUrl('/auth/signup');
-  }
-
-  fillDemoAccount() {
-    this.loginForm.patchValue({
-      identifier: this.demoCredentials.identifier,
-      password: this.demoCredentials.password,
-      rememberMe: true,
-    });
   }
 
   private buildDisplayName(identifier: string): string {

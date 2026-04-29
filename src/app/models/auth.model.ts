@@ -12,11 +12,23 @@ export interface SignupRequest {
 }
 
 export interface AuthResponse {
-  accessToken: string;
-  refreshToken: string;
+  accessToken?: string;
+  refreshToken?: string;
+  token?: string;
+  jwt?: string;
   username?: string;
   email?: string;
   fullName?: string;
+}
+
+export interface AuthValidationResponse {
+  valid: boolean;
+  userId?: number | string;
+  username?: string;
+  email?: string;
+  fullName?: string;
+  phone?: string;
+  error?: string;
 }
 
 export interface SignupResponse {
@@ -26,9 +38,29 @@ export interface SignupResponse {
 }
 
 export interface User {
+  id?: number;
   username: string;
   email: string;
   fullName?: string;
   phone?: string;
   roles?: string[];
+}
+
+export interface UserProfileResponse {
+  id: number;
+  username: string;
+  email: string;
+  fullName?: string;
+  phone?: string;
+}
+
+export interface UpdateUserProfileRequest {
+  email: string;
+  fullName: string;
+  phone?: string;
+}
+
+export interface UpdatePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }

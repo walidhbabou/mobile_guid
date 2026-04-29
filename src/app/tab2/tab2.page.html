@@ -1,196 +1,195 @@
 <ion-content [fullscreen]="true" class="map-screen">
   <div class="app-screen">
     <section class="map-topbar">
-      <div>
-        <p class="eyebrow">Carte intelligente</p>
-        <h1>Explorez autour de vous</h1>
-      </div>
-
-      <button type="button" class="icon-bubble" (click)="locateUser()" [disabled]="isLocating">
-        <ion-spinner *ngIf="isLocating" name="crescent"></ion-spinner>
-        <ion-icon *ngIf="!isLocating" name="locate-outline"></ion-icon>
-      </button>
-    </section>
-
-    <section class="voice-search-card surface-card">
-      <div class="voice-search-card__header">
-        <div>
-          <p class="eyebrow">Question texte ou audio</p>
-          <h2>Analyse AI reliee a la carte</h2>
-        </div>
-
-        <span class="soft-pill">{{ searchMode === 'catalog' ? 'Catalogue' : (searchMode === 'ai' ? 'IA' : 'Local') }}</span>
-      </div>
-
-      <div class="voice-search-card__shell">
-        <ion-icon name="search-outline"></ion-icon>
-        <ion-input
-          [(ngModel)]="searchQuery"
-          type="text"
-          placeholder="Ex: un cafe calme a Rabat ou une sortie en famille"
-          (keyup.enter)="searchWithAi()"
-        ></ion-input>
-
-        <button
-          type="button"
-          class="voice-search-card__action"
-          (click)="searchWithAi()"
-          [disabled]="isSearching || isRecording || !searchQuery.trim()"
-        >
-          <ion-spinner *ngIf="isSearching && !isRecording" name="crescent"></ion-spinner>
-          <ion-icon *ngIf="!isSearching || isRecording" name="arrow-forward-outline"></ion-icon>
-        </button>
-
-        <button
-          type="button"
-          class="voice-search-card__action voice-search-card__action--mic"
-          [class.recording]="isRecording"
-          (click)="toggleRecording()"
-          [disabled]="isSearching && !isRecording"
-        >
-          <ion-icon [name]="isRecording ? 'stop-circle-outline' : 'mic-outline'"></ion-icon>
-        </button>
-      </div>
-
-      <p class="voice-search-card__status">{{ recordingStateLabel }}</p>
-      <p class="voice-search-card__position">{{ locationLabel }}</p>
-      <p class="voice-search-card__error" *ngIf="recordingError">{{ recordingError }}</p>
-
-      <div class="voice-search-card__chips" *ngIf="suggestedQuestions.length">
-        <button
-          type="button"
-          class="soft-pill"
-          *ngFor="let question of suggestedQuestions"
-          (click)="useSuggestedQuestion(question)"
-        >
-          {{ question }}
-        </button>
-      </div>
-
-      <div class="voice-search-card__actions" *ngIf="hasActiveSearch">
-        <ion-button size="small" fill="outline" (click)="clearAiSearch()">Retour au catalogue</ion-button>
-      </div>
-    </section>
-
-    <section
-      class="assistant-panel surface-card"
-      *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.transcribedQuery"
-    >
-      <div class="assistant-panel__meta">
-        <span class="soft-pill" *ngIf="searchExperience?.inputMode">{{ searchExperience?.inputMode }}</span>
-        <span class="soft-pill" *ngIf="searchExperience?.detectedLanguage">{{ searchExperience?.detectedLanguage }}</span>
-        <span class="soft-pill" *ngIf="searchExperience?.audioFilename">{{ searchExperience?.audioFilename }}</span>
-      </div>
-
-      <p class="assistant-panel__transcript" *ngIf="searchExperience?.transcribedQuery">
-        "{{ searchExperience?.transcribedQuery }}"
-      </p>
-      <p class="assistant-panel__body">{{ searchExperience?.assistantReply || searchExperience?.message }}</p>
-    </section>
-
-    <section class="guide-cards" *ngIf="guideCards.length">
-      <button
-        type="button"
-        class="guide-card surface-card"
-        *ngFor="let card of guideCards"
-        (click)="useGuideCard(card)"
-      >
-        <strong>{{ card.title }}</strong>
-        <p>{{ card.description }}</p>
-        <span>{{ card.query || 'Utiliser cette suggestion' }}</span>
-      </button>
-    </section>
-
-    <div class="map-filters">
-      <button
-        type="button"
-        *ngFor="let filter of filters"
-        [class.active]="selectedFilter === filter"
-        (click)="selectFilter(filter)"
-      >
-        {{ filter }}
-      </button>
-    </div>
-
-    <section class="map-canvas surface-card">
-      <div #googleMap class="google-map"></div>
-
-      <button
-        type="button"
-        class="map-center-button"
-        *ngIf="selectedPlace"
-        (click)="focusSelectedPlace()"
-      >
-        <ion-icon name="locate-outline"></ion-icon>
-      </button>
-
-      <div class="map-canvas__overlay" *ngIf="isMapLoading || mapErrorMessage">
-        <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
-        <div>
-          <strong>{{ isMapLoading ? 'Chargement de Google Maps...' : 'Carte indisponible' }}</strong>
-          <p>{{ isMapLoading ? 'La carte se prepare dans cette page.' : mapErrorMessage }}</p>
-        </div>
-      </div>
-    </section>
-
-    <section class="map-place-strip" *ngIf="filteredPlaces.length">
-      <button
-        type="button"
-        class="map-place-chip surface-card"
-        *ngFor="let place of filteredPlaces"
-        [class.active]="selectedPlace?.id === place.id"
-        (click)="selectPlace(place)"
-      >
-        <strong>{{ place.name }}</strong>
-        <span>{{ place.location }}</span>
-      </button>
-    </section>
-
-    <section class="selected-place surface-card" *ngIf="selectedPlace as place; else emptyMapState">
-      <div class="selected-place__visual scenic-visual" [ngClass]="place.theme">
-        <img
-          *ngIf="place.imageUrl"
-          class="selected-place__image"
-          [src]="place.imageUrl"
-          [alt]="place.name"
-          loading="lazy"
-          decoding="async"
-          (error)="handlePlaceImageError(place)"
-        />
-        <span class="visual-badge">{{ place.badge }}</span>
-        <span class="visual-icon">
-          <ion-icon [name]="place.icon"></ion-icon>
+      <div class="map-topbar__title">
+        <span class="map-topbar__icon">
+          <ion-icon name="navigate-outline"></ion-icon>
         </span>
+        <div>
+          <p class="map-topbar__location">{{ primaryLocation }}</p>
+          <h1>Explorer</h1>
+        </div>
       </div>
 
-      <div class="selected-place__content">
-        <h2>{{ place.name }}</h2>
-        <p>{{ place.spotlight }}</p>
-
-        <div class="rating-text">
-          <span class="stars">{{ place.starsLabel }}</span>
-          <strong>{{ place.rating }}</strong>
-          <span>/ 5</span>
-        </div>
-
-        <div class="selected-place__actions">
-          <ion-button size="small" [routerLink]="['/tabs/place', place.id]">
-            Voir details
-          </ion-button>
-          <ion-button size="small" fill="outline" *ngIf="place.googleMapsUrl" [href]="place.googleMapsUrl" target="_blank">
-            Google Maps
-          </ion-button>
-        </div>
+      <div class="topbar-actions">
+        <button type="button" class="icon-bubble" (click)="toggleSplitView()" [class.active]="isSplitView">
+          <ion-icon name="grid-outline"></ion-icon>
+        </button>
+        <button type="button" class="icon-bubble" (click)="locateUser()" [disabled]="isLocating">
+          <ion-spinner *ngIf="isLocating" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!isLocating" name="locate-outline"></ion-icon>
+        </button>
       </div>
     </section>
 
-    <ng-template #emptyMapState>
-      <section class="selected-place surface-card">
-        <div class="selected-place__content">
-          <h2>Aucun lieu a afficher</h2>
-          <p>La carte se remplira automatiquement des que l API renvoie des lieux exploitables.</p>
+    <section class="map-search surface-card">
+      <ion-icon name="search-outline"></ion-icon>
+      <ion-input
+        [(ngModel)]="searchQuery"
+        type="text"
+        placeholder="Rechercher avec Google Maps..."
+        (keyup.enter)="searchInGoogleMaps()"
+      ></ion-input>
+      <button
+        type="button"
+        class="map-search__button"
+        (click)="searchInGoogleMaps()"
+        [disabled]="isSearchingPlaces || !searchQuery.trim()"
+      >
+        <ion-spinner *ngIf="isSearchingPlaces" name="crescent"></ion-spinner>
+        <ion-icon *ngIf="!isSearchingPlaces" name="arrow-forward-outline"></ion-icon>
+      </button>
+    </section>
+
+    <p class="map-search__feedback" *ngIf="mapSearchMessage">{{ mapSearchMessage }}</p>
+
+    <section class="split-layout" [class.split]="isSplitView">
+      <div class="split-layout__left">
+        <section class="section-heading">
+          <h2>Recommandé pour vous</h2>
+          <ion-spinner *ngIf="isLoadingRecommendations" name="crescent"></ion-spinner>
+        </section>
+
+        <p class="map-search__feedback" *ngIf="recommendationsErrorMessage">{{ recommendationsErrorMessage }}</p>
+
+        <section class="explore-list" *ngIf="recommendedPlaces.length">
+          <app-place-card
+            *ngFor="let item of recommendedPlaces"
+            [place]="item.place"
+            [distanceKm]="item.distanceKm"
+            [selected]="selectedPlace?.id === item.place.id"
+            [favorite]="isFavorite(item.place)"
+            [meta]="getPlaceMeta(item.place)"
+            (selectPlace)="selectPlace($event)"
+            (toggleFavorite)="onToggleFavorite($event)"
+            (viewOnMap)="onViewOnMap($event)"
+            (openRoute)="onOpenRoute($event)"
+          ></app-place-card>
+        </section>
+
+        <section class="section-heading">
+          <h2>Filtres</h2>
+          <span class="soft-pill">{{ visiblePlacesCount }}</span>
+        </section>
+
+        <div class="map-filters">
+          <button
+            type="button"
+            *ngFor="let filter of filters"
+            [class.active]="selectedFilter === filter"
+            (click)="selectFilter(filter)"
+          >
+            {{ filter }}
+          </button>
         </div>
-      </section>
-    </ng-template>
+
+        <section class="advanced-filters surface-card">
+          <div class="advanced-filters__row">
+            <label>Distance max (km)</label>
+            <ion-range [(ngModel)]="filterState.maxDistanceKm" min="1" max="50" step="1" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+            <span class="value">{{ filterState.maxDistanceKm }} km</span>
+          </div>
+
+          <div class="advanced-filters__row">
+            <label>Note minimum</label>
+            <ion-range [(ngModel)]="filterState.minRating" min="0" max="5" step="0.5" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+            <span class="value">{{ filterState.minRating }}</span>
+          </div>
+
+          <div class="advanced-filters__row">
+            <label>Budget max (MAD)</label>
+            <ion-range [(ngModel)]="filterState.maxBudgetMad" min="50" max="2000" step="50" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+            <span class="value">{{ filterState.maxBudgetMad }} MAD</span>
+          </div>
+        </section>
+
+        <section class="section-heading">
+          <h2>Explorer</h2>
+          <a routerLink="/tabs/home">Accueil</a>
+        </section>
+
+        <section class="explore-list" *ngIf="filteredPlaces.length">
+          <div *ngFor="let place of filteredPlaces" [attr.id]="'place-' + place.id">
+            <app-place-card
+              [place]="place"
+              [distanceKm]="distanceKmFromUser(place)"
+              [selected]="selectedPlace?.id === place.id"
+              [favorite]="isFavorite(place)"
+              [meta]="getPlaceMeta(place)"
+              (selectPlace)="selectPlace($event)"
+              (toggleFavorite)="onToggleFavorite($event)"
+              (viewOnMap)="onViewOnMap($event)"
+              (openRoute)="onOpenRoute($event)"
+            ></app-place-card>
+          </div>
+        </section>
+      </div>
+
+      <div class="split-layout__right" #mapPanel>
+        <section class="map-canvas surface-card">
+          <div #googleMap class="google-map"></div>
+
+          <button
+            type="button"
+            class="map-center-button"
+            *ngIf="selectedPlace"
+            (click)="focusSelectedPlace()"
+          >
+            <ion-icon name="locate-outline"></ion-icon>
+          </button>
+
+          <div class="map-canvas__overlay" *ngIf="isMapLoading || mapErrorMessage">
+            <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
+            <div>
+              <strong>{{ isMapLoading ? 'Chargement de Google Maps...' : 'Carte indisponible' }}</strong>
+              <p>{{ isMapLoading ? 'La carte se prepare dans cette page.' : mapErrorMessage }}</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="route-panel surface-card" *ngIf="selectedPlace as place; else emptyMapState">
+          <div class="route-panel__header">
+            <div>
+              <p class="eyebrow">Itineraire</p>
+              <h2>{{ place.name }}</h2>
+            </div>
+            <span class="soft-pill">{{ place.location }}</span>
+          </div>
+
+          <p class="route-panel__copy">{{ routeMessage }}</p>
+
+          <div class="route-panel__meta">
+            <span>
+              <ion-icon name="pin-outline"></ion-icon>
+              {{ place.address }}
+            </span>
+            <span *ngIf="routeDistanceText">
+              <ion-icon name="navigate-outline"></ion-icon>
+              {{ routeDistanceText }}
+            </span>
+            <span *ngIf="routeDurationText">
+              <ion-icon name="time-outline"></ion-icon>
+              ~{{ routeDurationText }}
+            </span>
+          </div>
+
+          <div class="route-panel__actions">
+            <ion-button size="small" fill="outline" (click)="locateUser()">
+              Actualiser ma position
+            </ion-button>
+            <ion-button size="small" *ngIf="routeUrl" (click)="openRouteInGoogleMaps()">
+              Ouvrir la route
+            </ion-button>
+          </div>
+        </section>
+
+        <ng-template #emptyMapState>
+          <section class="route-panel surface-card">
+            <h2>Aucun lieu selectionne</h2>
+            <p>Touchez un marqueur ou un lieu dans la liste pour preparer l itineraire et recentrer la carte.</p>
+          </section>
+        </ng-template>
+      </div>
+    </section>
   </div>
 </ion-content>

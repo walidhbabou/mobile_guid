@@ -30,6 +30,12 @@
   }
 }
 
+.detail-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .circle-button {
   width: 44px;
   height: 44px;
@@ -44,6 +50,15 @@
   ion-icon {
     font-size: 1.15rem;
   }
+
+  &:disabled {
+    opacity: 0.7;
+  }
+}
+
+.circle-button--active {
+  background: linear-gradient(135deg, #ef6c57 0%, #f5a27f 100%);
+  color: #ffffff;
 }
 
 .hero-card {
@@ -92,14 +107,11 @@
   padding: 16px 0;
   border: 0;
   background: transparent;
-  font-size: 0.96rem;
+  font-size: 1rem;
   color: var(--ion-text-color);
 
-  span:last-child {
-    color: var(--app-text-muted);
-    text-align: right;
-    max-width: 160px;
-    font-weight: 700;
+  > span {
+    font-weight: 600;
   }
 
   & + .info-row {
@@ -107,8 +119,150 @@
   }
 }
 
+.info-row__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 200px;
+  color: var(--app-text-muted);
+
+  strong {
+    font-size: 0.92rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  ion-icon {
+    font-size: 1rem;
+  }
+}
+
 .audio-card {
   padding: 18px;
+}
+
+.favorite-feedback {
+  padding: 16px 18px;
+
+  p {
+    margin: 0;
+    color: var(--app-text-muted);
+    line-height: 1.55;
+    font-weight: 700;
+  }
+}
+
+.review-form-card {
+  padding: 20px;
+}
+
+.editor-card {
+  padding: 20px;
+}
+
+.detail-summary {
+  display: grid;
+  gap: 14px;
+
+  div {
+    display: grid;
+    gap: 4px;
+  }
+
+  span {
+    color: var(--app-text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  strong {
+    color: var(--ion-text-color);
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.editor-field {
+  display: grid;
+  gap: 8px;
+
+  span {
+    color: var(--app-text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  input,
+  textarea {
+    width: 100%;
+    border: 1px solid rgba(113, 142, 173, 0.18);
+    border-radius: 16px;
+    background: rgba(246, 249, 255, 0.92);
+    padding: 14px 16px;
+    color: var(--ion-text-color);
+    font: inherit;
+    resize: vertical;
+  }
+
+  input:focus,
+  textarea:focus {
+    outline: 2px solid rgba(74, 150, 235, 0.18);
+    border-color: rgba(74, 150, 235, 0.4);
+  }
+}
+
+.editor-field--full {
+  grid-column: 1 / -1;
+}
+
+.rating-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 16px;
+}
+
+.rating-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(113, 142, 173, 0.18);
+  background: rgba(246, 249, 255, 0.92);
+  color: var(--ion-text-color);
+  font: inherit;
+  font-weight: 700;
+
+  ion-icon {
+    color: #efb341;
+  }
+}
+
+.rating-chip--active {
+  background: linear-gradient(135deg, #efb341 0%, #f5d27f 100%);
+  border-color: rgba(239, 179, 65, 0.2);
+  color: #523512;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+
+  ion-button {
+    --border-radius: 16px;
+  }
 }
 
 .eyebrow {
@@ -138,6 +292,12 @@
   }
 }
 
+.audio-card__copy {
+  margin: 16px 0 0;
+  color: var(--app-text-muted);
+  line-height: 1.65;
+}
+
 .audio-wave {
   height: 64px;
   display: flex;
@@ -163,6 +323,19 @@
   ion-button {
     --border-radius: 16px;
   }
+}
+
+.audio-card__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.audio-card__status {
+  margin: 14px 0 0;
+  color: var(--ion-color-primary);
+  font-weight: 700;
 }
 
 .reviews {
@@ -249,5 +422,32 @@
   ion-button {
     margin-top: 16px;
     --border-radius: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rating-chip {
+    flex: 1 1 calc(50% - 10px);
+    justify-content: center;
+  }
+
+  .audio-card__footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .audio-card__actions,
+  .editor-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .audio-card__actions ion-button,
+  .editor-actions ion-button {
+    flex: 1 1 auto;
   }
 }

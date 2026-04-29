@@ -5,15 +5,19 @@ import { Injectable } from '@angular/core';
 })
 export class TokenService {
 
-  saveTokens(accessToken: string, refreshToken: string): void {
+  saveTokens(accessToken: string, refreshToken?: string): void {
     localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken);
+    } else {
+      localStorage.removeItem('refreshToken');
+    }
     localStorage.setItem('token', accessToken);
     localStorage.setItem('isLoggedIn', 'true');
   }
 
   getAccessToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return localStorage.getItem('accessToken') || localStorage.getItem('token');
   }
 
   getRefreshToken(): string | null {
@@ -29,10 +33,7 @@ export class TokenService {
 
   isAuthenticated(): boolean {
     const accessToken = this.getAccessToken();
-    const refreshToken = this.getRefreshToken();
-
-    return (!!accessToken && !this.isTokenExpired(accessToken))
-      || (!!refreshToken && !this.isTokenExpired(refreshToken));
+    return !!accessToken && !this.isTokenExpired(accessToken);
   }
 
   private decodeToken(token: string): any {

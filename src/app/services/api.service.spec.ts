@@ -1,5 +1,7 @@
+import { HttpClient } from '@angular/common/http';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Capacitor } from '@capacitor/core';
 
 import { environment } from '../../environments/environment';
 import { ApiService } from './api.service';
@@ -99,6 +101,20 @@ describe('ApiService', () => {
     request.flush({});
   });
 
+  it('should encode place identifiers before updating the detail endpoint', () => {
+    const placeId = 'place id/ete';
+    const payload = { name: 'Dar Lwalida' };
+
+    service.updatePlaceByPlaceId(placeId, payload).subscribe();
+
+    const request = httpMock.expectOne(
+      `${environment.apiGatewayUrl}/api/morocco-ai/places/by-place-id/${encodeURIComponent(placeId)}`
+    );
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual(payload);
+    request.flush({});
+  });
+
   it('should expose backend validation errors to the caller', () => {
     const consoleSpy = spyOn(console, 'error');
 
@@ -120,5 +136,42 @@ describe('ApiService', () => {
     );
 
     expect(consoleSpy).toHaveBeenCalled();
+  });
+
+  it('should expose a friendly message when the backend cannot be reached', () => {
+    spyOn(console, 'error');
+
+    service.login({ username: 'admin', password: '2002' }).subscribe({
+      next: () => fail('The login request should fail'),
+      error: (error) => {
+        expect(error).toEqual({
+          status: 0,
+          message: 'Impossible de joindre le serveur pour le moment. Verifiez votre connexion ou relancez les services de l application.'
+        });
+      },
+    });
+
+    const request = httpMock.expectOne(`${environment.authServiceUrl}/api/auth/signin`);
+    request.error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
+  });
+
+  it('should prefer the native backend URL on Android even for production builds', () => {
+    const originalProduction = environment.production;
+    const nativePlatformSpy = spyOn(Capacitor, 'isNativePlatform').and.returnValue(true);
+
+    (environment as { production: boolean }).production = true;
+
+    try {
+      const productionService = new ApiService(TestBed.inject(HttpClient), tokenServiceSpy);
+
+      productionService.login({ username: 'admin', password: '2002' }).subscribe();
+
+      const request = httpMock.expectOne(`${environment.nativeAuthServiceUrl}/api/auth/signin`);
+      expect(request.request.method).toBe('POST');
+      request.flush({ accessToken: 'access-token', refreshToken: 'refresh-token' });
+    } finally {
+      (environment as { production: boolean }).production = originalProduction;
+      nativePlatformSpy.and.callThrough();
+    }
   });
 });

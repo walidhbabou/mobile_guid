@@ -13,12 +13,23 @@
 
 .profile-card {
   padding: 22px;
+  overflow: hidden;
+  color: #ffffff;
+  box-shadow: var(--app-shadow-strong);
+
+  &::after {
+    background:
+      linear-gradient(180deg, transparent 0%, rgba(19, 40, 71, 0.28) 58%, rgba(13, 29, 56, 0.82) 100%),
+      radial-gradient(circle at 18% 100%, rgba(245, 183, 92, 0.2), transparent 28%);
+  }
 }
 
 .profile-card__top {
   display: flex;
   align-items: center;
   gap: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .profile-avatar {
@@ -43,7 +54,11 @@
 
   p:last-child {
     margin: 0;
-    color: var(--app-text-muted);
+    color: rgba(242, 248, 255, 0.84);
+  }
+
+  .eyebrow {
+    color: rgba(255, 255, 255, 0.82);
   }
 }
 
@@ -52,6 +67,39 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 18px;
+  position: relative;
+  z-index: 1;
+
+  .soft-pill {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+  }
+}
+
+.profile-highlight {
+  position: relative;
+  z-index: 1;
+  margin-top: 18px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+
+  h2 {
+    margin: 8px 0 8px;
+    font-size: 1.3rem;
+  }
+
+  p:last-child {
+    margin: 0;
+    color: rgba(244, 249, 255, 0.84);
+    line-height: 1.55;
+  }
+
+  .eyebrow {
+    color: rgba(255, 255, 255, 0.82);
+  }
 }
 
 .stats-grid {
@@ -64,6 +112,7 @@
 .stat-card {
   padding: 18px 12px;
   text-align: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(245, 250, 255, 0.72));
 
   strong {
     display: block;
@@ -83,6 +132,76 @@
 .actions {
   padding: 20px;
   margin-top: 18px;
+}
+
+.editor-card {
+  padding: 20px;
+  margin-top: 18px;
+}
+
+.section-hint {
+  color: var(--app-text-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.editor-field {
+  display: grid;
+  gap: 8px;
+
+  span {
+    color: var(--app-text-muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+
+  input {
+    width: 100%;
+    border: 1px solid rgba(113, 142, 173, 0.18);
+    border-radius: 16px;
+    background: rgba(246, 249, 255, 0.92);
+    padding: 14px 16px;
+    color: var(--ion-text-color);
+    font: inherit;
+  }
+
+  input:focus {
+    outline: 2px solid rgba(74, 150, 235, 0.18);
+    border-color: rgba(74, 150, 235, 0.4);
+  }
+}
+
+.editor-field--full {
+  grid-column: 1 / -1;
+}
+
+.editor-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+
+  ion-button {
+    --border-radius: 16px;
+  }
+}
+
+.feedback-card {
+  padding: 16px 18px;
+  margin-top: 12px;
+
+  p {
+    margin: 0;
+    color: var(--app-text-muted);
+    line-height: 1.55;
+    font-weight: 700;
+  }
 }
 
 .action-row {
@@ -137,4 +256,18 @@
   height: 54px;
   border: 1px solid rgba(211, 95, 109, 0.16);
   box-shadow: var(--app-shadow-card);
+}
+
+@media (max-width: 640px) {
+  .editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-actions {
+    justify-content: stretch;
+  }
+
+  .editor-actions ion-button {
+    width: 100%;
+  }
 }

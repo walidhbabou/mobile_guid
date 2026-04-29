@@ -3,7 +3,7 @@ import { IonicModule } from '@ionic/angular';
 import { of } from 'rxjs';
 
 import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
-import { PlaceCatalogService } from '../services/place-catalog.service';
+import { CoreDataService } from '../services/core-data.service';
 
 import { Tab3Page } from './tab3.page';
 
@@ -17,9 +17,9 @@ describe('Tab3Page', () => {
       imports: [IonicModule.forRoot(), ExploreContainerComponentModule],
       providers: [
         {
-          provide: PlaceCatalogService,
+          provide: CoreDataService,
           useValue: {
-            getRecentPlaces: () => of([]),
+            getFavoritePlaces: () => of([]),
           },
         },
       ],

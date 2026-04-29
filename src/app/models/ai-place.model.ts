@@ -7,6 +7,7 @@ export interface AiPlaceSearchResult {
   address?: string;
   rating?: number;
   imageUrl?: string;
+  fallbackImageUrl?: string;
   latitude?: number;
   longitude?: number;
   googleMapsUrl?: string;
@@ -16,6 +17,7 @@ export interface AiPlaceSearchResult {
   theme?: string;
   visualBadge?: string;
   visualIcon?: string;
+  distanceKm?: number;
   source: 'ai' | 'fallback';
 }
 
@@ -23,6 +25,14 @@ export interface AiGuideCard {
   title: string;
   description: string;
   query?: string;
+  /**
+   * Champs optionnels enrichissant les cartes quand il s'agit d'un itinéraire.
+   * Provenance: `llm_map` -> backend Java -> front.
+   */
+  timeSlot?: string;
+  durationMinutes?: number;
+  budgetMinMad?: number;
+  budgetMaxMad?: number;
 }
 
 export interface AiPlaceSearchExperience {
@@ -30,6 +40,7 @@ export interface AiPlaceSearchExperience {
   source: 'ai' | 'fallback';
   assistantReply?: string;
   message?: string;
+  positionNote?: string;
   inputMode?: string;
   responseMode?: string;
   detectedLanguage?: string;

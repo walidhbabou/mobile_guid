@@ -1,4 +1,4 @@
-// This file can be replaced during build by using the `fileReplacements` array.
+﻿// This file can be replaced during build by using the `fileReplacements` array.
 // `ng build` replaces `environment.ts` with `environment.prod.ts`.
 // The list of file replacements can be found in `angular.json`.
 
@@ -6,6 +6,10 @@ export const environment = {
   production: false,
   apiGatewayUrl: 'http://localhost:8081',
   authServiceUrl: 'http://localhost:8081',
+  // On a real Android device, localhost targets the phone itself.
+  // Update this LAN IP if your machine address changes.
+  nativeApiGatewayUrl: 'http://192.168.1.33:8081',
+  nativeAuthServiceUrl: 'http://192.168.1.33:8081',
   googleMapsApiKey: 'AIzaSyDyUQokHyUmfa9Ni-PZr7VvKanZdY-1hOw'
 };
 

@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { CoreDataService } from '../services/core-data.service';
 
 @Component({
   selector: 'app-tabs',
@@ -7,5 +8,13 @@ import { Component } from '@angular/core';
   standalone: false,
 })
 export class TabsPage {
-  notificationCount = 1;
+  notificationCount = 0;
+
+  constructor(private coreDataService: CoreDataService) {}
+
+  ionViewWillEnter() {
+    this.coreDataService.getNotifications().subscribe((notifications) => {
+      this.notificationCount = notifications.length;
+    });
+  }
 }
