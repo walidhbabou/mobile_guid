@@ -1,234 +1,315 @@
-<ion-content [fullscreen]="true" class="home-screen">
-  <div class="app-screen">
-    <section class="home-topbar">
-      <div class="home-topbar__copy">
-        <p class="home-greeting">Bonjour <strong>{{ userName }}</strong></p>
-        <h1>Guide Touristique Intelligent</h1>
-      </div>
+<ion-content [fullscreen]="true" class="editorial-home">
+  <div class="ed-wrapper">
 
-      <button type="button" class="avatar-button" routerLink="/tabs/notifications">
-        <span>{{ userInitial }}</span>
-        <span class="avatar-badge" *ngIf="notificationCount">{{ notificationCount }}</span>
-      </button>
-    </section>
+    <!-- ─── HERO ─────────────────────────────────────────── -->
+    <section class="ed-hero">
+      <div class="ed-hero__texture" aria-hidden="true"></div>
 
-    <section class="home-search surface-card">
-      <div class="home-search__shell">
-        <ion-icon name="sparkles-outline"></ion-icon>
+      <p class="ed-hero__eyebrow">BONJOUR, {{ userName | uppercase }}</p>
+
+      <h1 class="ed-hero__title">
+        <em>Explorez</em>
+        <strong>le Maroc</strong>
+      </h1>
+
+      <p class="ed-hero__subtitle">
+        Médinas, déserts, ruelles bleues. Trouvez votre prochaine escapade.
+      </p>
+
+      <div class="ed-search">
+        <span class="ed-search__sparkle" aria-hidden="true">✦</span>
         <ion-input
           [(ngModel)]="searchQuery"
-          type="text"
-          placeholder="Rechercher un lieu..."
+          placeholder="plage calme, médina, restaurant..."
           (keyup.enter)="searchWithAi()"
+          class="ed-search__input"
         ></ion-input>
-
         <button
           type="button"
-          class="ai-search-button ai-search-button--audio"
-          [class.ai-search-button--recording]="isRecordingAudio"
+          class="ed-search__mic"
+          [class.ed-search__mic--on]="isRecordingAudio"
           (click)="toggleAudioSearch()"
           [disabled]="isSearching && !isRecordingAudio"
         >
-          <ion-icon *ngIf="!isRecordingAudio" name="mic-outline"></ion-icon>
-          <ion-icon *ngIf="isRecordingAudio" name="stop-circle-outline"></ion-icon>
+          <ion-icon [name]="isRecordingAudio ? 'stop-circle' : 'mic-outline'"></ion-icon>
         </button>
-
         <button
           type="button"
-          class="ai-search-button"
+          class="ed-search__btn"
           (click)="searchWithAi()"
           [disabled]="isSearching || isRecordingAudio || !searchQuery.trim()"
         >
           <ion-spinner *ngIf="isSearching" name="crescent"></ion-spinner>
-          <ion-icon *ngIf="!isSearching" name="arrow-forward-outline"></ion-icon>
+          <ion-icon *ngIf="!isSearching" name="search"></ion-icon>
         </button>
       </div>
 
-      <p class="home-search__feedback" *ngIf="searchLocationMessage">
-        {{ searchLocationMessage }}
-      </p>
-
-      <p class="home-search__feedback" *ngIf="audioSearchMessage">
-        {{ audioSearchMessage }}
+      <p class="ed-search__msg" *ngIf="searchLocationMessage || audioSearchMessage">
+        {{ searchLocationMessage || audioSearchMessage }}
       </p>
     </section>
 
-    <section class="ai-results-section" *ngIf="hasSearched">
-      <div class="section-heading">
-        <div>
-          <h2>{{ resultSectionTitle }}</h2>
-          <p class="section-heading__copy">{{ searchResultSummary }}</p>
-        </div>
-        <button type="button" (click)="clearSearch()">Effacer</button>
-      </div>
+    <!-- ─── CONTENT ──────────────────────────────────────── -->
+    <section class="ed-content">
 
-      <p class="ai-search-note" *ngIf="searchMode === 'fallback' && searchResults.length">
-        L assistant n a pas pu finaliser cette demande. L application vous propose des adresses locales proches de votre besoin.
-      </p>
-
-      <section
-        class="assistant-response-card surface-card"
-        *ngIf="searchExperience?.assistantReply || searchExperience?.message || searchExperience?.positionNote || searchExperience?.transcribedQuery"
-      >
-        <div class="assistant-response-card__meta">
-          <span class="soft-pill" *ngIf="searchExperience?.inputMode === 'audio'">Question audio analysee</span>
-          <span class="soft-pill" *ngIf="searchExperience?.detectedLanguage">
-            Langue: {{ searchExperience?.detectedLanguage }}
+      <!-- Section header -->
+      <div class="ed-content__row">
+        <div class="ed-content__row-left">
+          <h2 class="ed-content__heading">
+            {{ hasSearched ? 'Résultats' : 'À découvrir' }}
+          </h2>
+          <span class="ed-results-badge" *ngIf="hasSearched && !isSearching && searchResults.length">
+            {{ searchResults.length }}
           </span>
         </div>
+        <button type="button" class="ed-content__action" *ngIf="hasSearched" (click)="clearSearch()">
+          Effacer
+        </button>
+      </div>
 
-        <p class="assistant-response-card__transcript" *ngIf="searchExperience?.transcribedQuery">
-          "{{ searchExperience?.transcribedQuery }}"
-        </p>
-
-        <p class="assistant-response-card__body" *ngIf="searchExperience?.positionNote">
-          {{ searchExperience?.positionNote }}
-        </p>
-
-        <p class="assistant-response-card__body" *ngIf="searchExperience?.assistantReply || searchExperience?.message">
-          {{ searchExperience?.assistantReply || searchExperience?.message }}
-        </p>
-      </section>
-
-      <section class="guide-cards" *ngIf="searchExperience?.guideCards?.length">
+      <!-- Filter chips -->
+      <div class="ed-filters">
         <button
           type="button"
-          class="guide-card surface-card"
-          *ngFor="let card of searchExperience?.guideCards"
-          (click)="useGuideCard(card)"
-        >
-          <strong>{{ card.title }}</strong>
-          <p>{{ card.description }}</p>
-          <span *ngIf="card.timeSlot || card.durationMinutes || (card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined)">
-            <ng-container *ngIf="card.timeSlot">{{ card.timeSlot }}</ng-container>
-            <ng-container *ngIf="card.timeSlot && card.durationMinutes"> · </ng-container>
-            <ng-container *ngIf="card.durationMinutes">~{{ card.durationMinutes }} min</ng-container>
-            <ng-container *ngIf="(card.timeSlot || card.durationMinutes) && (card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined)"> · </ng-container>
-            <ng-container *ngIf="card.budgetMinMad !== undefined && card.budgetMaxMad !== undefined">
-              {{ card.budgetMinMad }}-{{ card.budgetMaxMad }} MAD
-            </ng-container>
-          </span>
-          <span>{{ card.query || 'Relancer cette recherche' }}</span>
-        </button>
+          class="ed-chip"
+          [class.ed-chip--active]="selectedQuickFilter === 'Tout'"
+          (click)="useQuickFilter('Tout')"
+        >Tout</button>
+        <button
+          type="button"
+          class="ed-chip"
+          *ngFor="let f of quickFilters"
+          [class.ed-chip--active]="selectedQuickFilter === f"
+          (click)="useQuickFilter(f)"
+        >{{ f }}</button>
+      </div>
+
+      <!-- ─── LOADING SKELETONS ─────────────────────────── -->
+      <ng-container *ngIf="isSearching">
+        <div class="hm-skeleton">
+          <div class="hm-skeleton__featured">
+            <div class="hm-skeleton__img"></div>
+            <div class="hm-skeleton__body">
+              <div class="hm-skeleton__pill"></div>
+              <div class="hm-skeleton__line hm-skeleton__line--title"></div>
+              <div class="hm-skeleton__line"></div>
+              <div class="hm-skeleton__line hm-skeleton__line--short"></div>
+              <div class="hm-skeleton__actions">
+                <div class="hm-skeleton__btn"></div>
+                <div class="hm-skeleton__btn"></div>
+              </div>
+            </div>
+          </div>
+          <div class="hm-skeleton__row">
+            <div class="hm-skeleton__mini">
+              <div class="hm-skeleton__img hm-skeleton__img--mini"></div>
+              <div class="hm-skeleton__body">
+                <div class="hm-skeleton__pill"></div>
+                <div class="hm-skeleton__line hm-skeleton__line--med"></div>
+                <div class="hm-skeleton__line hm-skeleton__line--short"></div>
+              </div>
+            </div>
+            <div class="hm-skeleton__mini">
+              <div class="hm-skeleton__img hm-skeleton__img--mini"></div>
+              <div class="hm-skeleton__body">
+                <div class="hm-skeleton__pill"></div>
+                <div class="hm-skeleton__line hm-skeleton__line--med"></div>
+                <div class="hm-skeleton__line hm-skeleton__line--short"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- ─── LOADED STATE ──────────────────────────────── -->
+      <ng-container *ngIf="!isSearching">
+
+        <!-- AI narration -->
+        <div class="ed-ai" *ngIf="searchNarration">
+          <div class="ed-ai__icon">
+            <ion-icon name="sparkles"></ion-icon>
+          </div>
+          <div class="ed-ai__body">
+            <span class="ed-ai__label">
+              Guide IA{{ isItinerary ? ' · Itinéraire' : '' }}
+            </span>
+            <p class="ed-ai__text">{{ displayedNarration }}</p>
+            <button
+              *ngIf="searchNarration.length > 220"
+              type="button"
+              class="ed-ai__toggle"
+              (click)="isNarrationExpanded = !isNarrationExpanded"
+            >
+              {{ isNarrationExpanded ? 'Réduire ▲' : 'Lire plus ▼' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="hm-empty" *ngIf="hasSearched && searchResults.length === 0">
+          <ion-icon name="compass-outline" class="hm-empty__icon"></ion-icon>
+          <p class="hm-empty__title">Aucun lieu trouvé</p>
+          <p class="hm-empty__sub">Essayez une autre formulation ou inspirez-vous des suggestions ci-dessous.</p>
+        </div>
+
+        <!-- ─── FEATURED CARD (grande) ──── -->
+        <ng-container *ngIf="searchResults.length; else spotlightRef">
+          <ng-container
+            *ngTemplateOutlet="cardTpl; context: { entity: searchResults[0], isResult: true }"
+          ></ng-container>
+        </ng-container>
+
+        <ng-template #spotlightRef>
+          <ng-container
+            *ngTemplateOutlet="cardTpl; context: { entity: spotlightPlace, isResult: false }"
+          ></ng-container>
+        </ng-template>
+
+        <!-- Shared card template -->
+        <ng-template #cardTpl let-entity="entity" let-isResult="isResult">
+          <article class="hm-card" *ngIf="entity">
+            <div
+              class="hm-card__img scenic-visual"
+              [ngClass]="entity.theme || 'theme-agadir'"
+              [class.hm-card__img--loading]="!highlightImageLoaded"
+            >
+              <img
+                [src]="getImageSrc(entity)"
+                [alt]="entity.name"
+                loading="lazy"
+                decoding="async"
+                [class.loaded]="highlightImageLoaded"
+                (error)="handleImageError($event, entity)"
+                (load)="onHighlightImageLoad()"
+              />
+              <div class="hm-card__img-overlay"></div>
+              <span class="hm-card__badge">
+                {{ isResult ? 'Suggestion IA' : entity.spotlight }}
+              </span>
+              <button
+                type="button"
+                class="hm-card__fav"
+                [class.hm-card__fav--on]="isFavorite(mainCardFavId(entity, isResult))"
+                (click)="onToggleMainCard(entity, isResult)"
+              >
+                <ion-icon
+                  [name]="isFavorite(mainCardFavId(entity, isResult)) ? 'heart' : 'heart-outline'"
+                ></ion-icon>
+              </button>
+            </div>
+
+            <div class="hm-card__body">
+              <div class="hm-card__tags">
+                <span class="hm-tag">{{ entity.category }}</span>
+                <span class="hm-tag hm-tag--blue" *ngIf="isResult">
+                  {{ entity.source === 'ai' ? 'IA' : 'Local' }}
+                </span>
+                <span class="hm-tag hm-tag--amber" *ngIf="!isResult">
+                  {{ entity.spotlight }}
+                </span>
+                <span class="hm-card__dist" *ngIf="isResult && entity.distanceKm !== undefined">
+                  <ion-icon name="location-outline"></ion-icon>
+                  {{ entity.distanceKm | number:'1.1-1' }} km
+                </span>
+              </div>
+
+              <h3 class="hm-card__name">{{ entity.name }}</h3>
+              <p class="hm-card__loc">
+                <ion-icon name="location-outline"></ion-icon>
+                {{ entity.location }}
+              </p>
+              <p class="hm-card__desc" *ngIf="entity.description || entity.shortDescription">
+                {{ entity.description || entity.shortDescription }}
+              </p>
+
+              <div class="hm-card__footer" *ngIf="entity.rating">
+                <span class="hm-stars">{{ entity.starsLabel || '★★★★★' }}</span>
+                <strong>{{ entity.rating }}</strong>
+                <span class="hm-card__reviews" *ngIf="entity.reviewsLabel">
+                  {{ entity.reviewsLabel }}
+                </span>
+              </div>
+
+              <div class="hm-card__actions">
+                <ion-button expand="block" [routerLink]="mainCardRoute(entity, isResult)">
+                  Voir la fiche
+                </ion-button>
+                <ion-button
+                  expand="block"
+                  fill="outline"
+                  [routerLink]="['/tabs/map']"
+                  [queryParams]="mainCardMapParams(entity, isResult)"
+                >
+                  <ion-icon slot="start" name="navigate-outline"></ion-icon>
+                  Itinéraire
+                </ion-button>
+              </div>
+            </div>
+          </article>
+        </ng-template>
+
+        <!-- ─── MINI GRID (cartes petites) ──── -->
+        <div class="hm-mini-grid" *ngIf="miniCards.length">
+          <article
+            class="hm-mini-card"
+            *ngFor="let card of miniCards; let i = index"
+            [style.animation-delay]="(i * 60) + 'ms'"
+            (click)="onMiniCardSelect(card)"
+          >
+            <div class="hm-mini-card__img scenic-visual" [ngClass]="card.theme || 'theme-agadir'">
+              <img
+                [src]="getImageSrc(card)"
+                [alt]="card.name"
+                loading="lazy"
+                decoding="async"
+                (error)="handleImageError($event, card)"
+              />
+              <div class="hm-mini-card__overlay"></div>
+              <span class="hm-mini-card__badge">{{ card.category }}</span>
+              <button
+                type="button"
+                class="hm-mini-card__fav"
+                [class.hm-mini-card__fav--on]="isFavorite(card.id)"
+                (click)="onToggleMiniCardFav($event, card)"
+              >
+                <ion-icon [name]="isFavorite(card.id) ? 'heart' : 'heart-outline'"></ion-icon>
+              </button>
+            </div>
+            <div class="hm-mini-card__body">
+              <h4 class="hm-mini-card__name">{{ card.name }}</h4>
+              <p class="hm-mini-card__loc">
+                <ion-icon name="location-outline"></ion-icon>
+                {{ card.location }}
+              </p>
+              <div class="hm-mini-card__footer" *ngIf="card.rating">
+                <span class="hm-stars">★★★★★</span>
+                <strong>{{ card.rating | number:'1.0-1' }}</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+
+      </ng-container>
+
+      <!-- ─── SEARCH SUGGESTIONS ────────────────────────── -->
+      <section class="ed-prompts">
+        <h3 class="ed-prompts__title">
+          {{ searchExperience?.suggestedQuestions?.length ? 'Affiner' : 'Explorer' }}
+        </h3>
+        <div class="ed-prompts__list">
+          <button
+            type="button"
+            class="ed-prompt"
+            *ngFor="let q of activePrompts"
+            (click)="useSuggestedPrompt(q)"
+          >
+            <ion-icon name="search-outline"></ion-icon>
+            <span>{{ q }}</span>
+            <ion-icon name="chevron-forward" class="ed-prompt__chevron"></ion-icon>
+          </button>
+        </div>
       </section>
 
-      <div class="ai-results-grid" *ngIf="searchResults.length; else emptySearchState">
-        <article class="ai-result-card surface-card" *ngFor="let result of searchResults">
-          <div class="ai-result-card__visual scenic-visual" [ngClass]="result.theme || 'theme-rabat'">
-            <img
-              *ngIf="result.imageUrl"
-              class="ai-result-card__image"
-              [src]="result.imageUrl"
-              [alt]="result.name"
-              loading="lazy"
-              decoding="async"
-              (error)="handleResultImageError(result)"
-            />
-
-            <span class="visual-badge">{{ result.visualBadge || result.category }}</span>
-            <span class="visual-icon">
-              <ion-icon [name]="result.visualIcon || 'image-outline'"></ion-icon>
-            </span>
-          </div>
-
-          <div class="ai-result-card__body">
-            <div class="ai-result-card__meta">
-              <span class="soft-pill">{{ result.category }}</span>
-              <span class="soft-pill" *ngIf="result.distanceKm !== undefined">
-                A {{ result.distanceKm | number:'1.1-1' }} km
-              </span>
-              <span class="rating-text" *ngIf="result.rating">
-                <strong>{{ result.rating }}</strong>
-                <span>/ 5</span>
-              </span>
-            </div>
-
-            <h3>{{ result.name }}</h3>
-            <p class="ai-result-card__location">{{ result.location }}</p>
-            <p class="ai-result-card__description">{{ result.description }}</p>
-
-            <div class="ai-result-card__actions">
-              <ion-button *ngIf="result.routeId" size="small" [routerLink]="['/tabs/place', result.routeId]">
-                Voir la fiche
-              </ion-button>
-              <ion-button
-                size="small"
-                fill="outline"
-                [routerLink]="['/tabs/map']"
-                [queryParams]="buildMapQueryParamsForResult(result)"
-              >
-                Voir sur la carte
-              </ion-button>
-            </div>
-          </div>
-        </article>
-      </div>
-
-      <ng-template #emptySearchState>
-        <div class="empty-ai-state surface-card">
-          <ion-icon name="search-outline"></ion-icon>
-          <h3>Aucun lieu trouve</h3>
-          <p>Essayez une recherche plus simple, par exemple "culture a Rabat" ou "plage a Agadir".</p>
-        </div>
-      </ng-template>
     </section>
-
-    <section class="section-heading">
-      <h2>Lieux populaires</h2>
-      <a routerLink="/tabs/map">Explorer</a>
-    </section>
-
-    <div class="places-grid">
-      <button
-        type="button"
-        class="place-card surface-card"
-        *ngFor="let place of featuredPlaces"
-        [routerLink]="['/tabs/place', place.id]"
-      >
-        <div class="place-card__visual scenic-visual" [ngClass]="place.theme">
-          <img
-            *ngIf="place.imageUrl"
-            class="place-card__image"
-            [src]="place.imageUrl"
-            [alt]="place.name"
-            loading="lazy"
-            decoding="async"
-            (error)="handlePlaceImageError(place)"
-          />
-          <span class="visual-badge">{{ place.badge }}</span>
-          <span class="visual-icon">
-            <ion-icon [name]="place.icon"></ion-icon>
-          </span>
-        </div>
-
-        <div class="place-card__body">
-          <h3>{{ place.name }}</h3>
-          <p class="place-card__location">{{ place.location }}</p>
-
-          <div class="rating-text">
-            <span class="stars">{{ place.starsLabel }}</span>
-            <strong>{{ place.rating }}</strong>
-            <span>/ 5</span>
-          </div>
-
-          <p class="place-card__meta">{{ place.category }} - {{ place.reviewsLabel }}</p>
-        </div>
-      </button>
-    </div>
-
-    <button
-      type="button"
-      class="voice-banner"
-      [class.voice-banner--recording]="isRecordingAudio"
-      (click)="toggleAudioSearch()"
-      [disabled]="isSearching && !isRecordingAudio"
-    >
-      <ion-icon [name]="isRecordingAudio ? 'stop-circle-outline' : 'mic-circle-outline'"></ion-icon>
-      <div>
-        <strong>{{ isRecordingAudio ? 'Enregistrement en cours' : 'Recherche Vocale' }}</strong>
-        <span>{{ isRecordingAudio ? 'Touchez pour envoyer votre demande' : 'Touchez pour lancer une recherche a la voix' }}</span>
-      </div>
-      <ion-icon name="chevron-forward-outline"></ion-icon>
-    </button>
   </div>
 </ion-content>

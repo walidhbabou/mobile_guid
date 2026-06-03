@@ -4,18 +4,26 @@ import { Place } from '../data/tourism.data';
 import { AiPlaceSearchExperience } from '../models/ai-place.model';
 import { ApiService } from './api.service';
 import { AiPlaceService } from './ai-place.service';
+import { ImageProxyService } from './image-proxy.service';
 import { PlaceCatalogService } from './place-catalog.service';
+import { TokenService } from './token.service';
 
 describe('AiPlaceService', () => {
   let service: AiPlaceService;
   let apiServiceSpy: jasmine.SpyObj<ApiService>;
+  let imageProxyServiceSpy: jasmine.SpyObj<ImageProxyService>;
   let placeCatalogServiceSpy: jasmine.SpyObj<PlaceCatalogService>;
+  let tokenServiceSpy: jasmine.SpyObj<TokenService>;
 
   beforeEach(() => {
     apiServiceSpy = jasmine.createSpyObj<ApiService>('ApiService', ['post', 'get', 'postFormData']);
+    imageProxyServiceSpy = jasmine.createSpyObj<ImageProxyService>('ImageProxyService', ['getImageUrl']);
     placeCatalogServiceSpy = jasmine.createSpyObj<PlaceCatalogService>('PlaceCatalogService', ['getPlaces', 'buildFallbackImageUrl']);
-    placeCatalogServiceSpy.buildFallbackImageUrl.and.returnValue('https://maps.googleapis.com/maps/api/streetview?size=1200x800');
-    service = new AiPlaceService(apiServiceSpy, placeCatalogServiceSpy);
+    tokenServiceSpy = jasmine.createSpyObj<TokenService>('TokenService', ['getAccessToken']);
+    imageProxyServiceSpy.getImageUrl.and.callFake((url: string | undefined) => url);
+    placeCatalogServiceSpy.buildFallbackImageUrl.and.returnValue('https://picsum.photos/seed/morocco/600/400');
+    tokenServiceSpy.getAccessToken.and.returnValue('token');
+    service = new AiPlaceService(apiServiceSpy, imageProxyServiceSpy, placeCatalogServiceSpy, tokenServiceSpy);
   });
 
   function createPlace(overrides: Partial<Place> = {}): Place {
@@ -90,6 +98,27 @@ describe('AiPlaceService', () => {
       expect(experience.results[0].theme).toBe(localPlace.theme);
       expect(experience.results[0].visualBadge).toBe(localPlace.badge);
       expect(experience.results[0].visualIcon).toBe(localPlace.icon);
+    });
+  });
+
+  it('should keep up to ten AI results when the backend sends result_limit 10', () => {
+    placeCatalogServiceSpy.getPlaces.and.returnValue(of([]));
+    apiServiceSpy.post.and.returnValue(of({
+      result_limit: 10,
+      results_count: 10,
+      results: Array.from({ length: 10 }, (_, index: number) => ({
+        id: `cafe-${index + 1}`,
+        name: `Cafe ${index + 1}`,
+        location: 'Rabat',
+        category: 'Cafe',
+        description: `Suggestion ${index + 1}`,
+      })),
+    }));
+
+    service.search('cafe rabat').subscribe((experience: AiPlaceSearchExperience) => {
+      expect(experience.results.length).toBe(10);
+      expect(experience.resultsCount).toBe(10);
+      expect(experience.results[9].name).toBe('Cafe 10');
     });
   });
 

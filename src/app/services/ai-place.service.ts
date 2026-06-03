@@ -5,6 +5,7 @@ import { AiGuideCard, AiPlaceSearchExperience, AiPlaceSearchResult } from '../mo
 import { RecommendationsResponseApi } from '../models/recommendation.model';
 import { Place } from '../data/tourism.data';
 import { ApiService } from './api.service';
+import { ImageProxyService } from './image-proxy.service';
 import { PlaceCatalogService } from './place-catalog.service';
 import { TokenService } from './token.service';
 
@@ -19,6 +20,8 @@ export interface AiSearchRequestOptions {
 })
 export class AiPlaceService {
   private readonly aiRequestTimeoutMs = 30000;
+  private readonly audioRequestTimeoutMs = 90000;
+  private readonly defaultResultLimit = 10;
   private readonly supportedCityTokens = [
     'agadir',
     'asilah',
@@ -50,6 +53,7 @@ export class AiPlaceService {
 
   constructor(
     private apiService: ApiService,
+    private imageProxyService: ImageProxyService,
     private placeCatalogService: PlaceCatalogService,
     private tokenService: TokenService
   ) {}
@@ -72,7 +76,7 @@ export class AiPlaceService {
     }
 
     const endpoint = `/api/ai/recommendations?lat=${encodeURIComponent(String(safeLat))}&lon=${encodeURIComponent(String(safeLon))}`;
-    return this.apiService.get(endpoint, { timeoutMs: 20000 });
+    return this.apiService.get(endpoint, { timeoutMs: 20000 }) as Observable<RecommendationsResponseApi>;
   }
 
   search(query: string, options: AiSearchRequestOptions = {}): Observable<AiPlaceSearchExperience> {
@@ -129,7 +133,7 @@ export class AiPlaceService {
       () => this.apiService.postFormData(
         endpoint,
         this.buildAudioFormData(audio, options, normalizedLanguage),
-        { timeoutMs: this.aiRequestTimeoutMs }
+        { timeoutMs: this.audioRequestTimeoutMs }
       )
     ));
 
@@ -172,7 +176,7 @@ export class AiPlaceService {
       return true;
     }
 
-    return status === 404 || status >= 500;
+    return status === 404 || status === 403 || status >= 500;
   }
 
   private normalizeExperience(
@@ -182,13 +186,14 @@ export class AiPlaceService {
     options: AiSearchRequestOptions = {}
   ): AiPlaceSearchExperience {
     const records = this.collectResponseRecords(this.parseJsonResponse(response));
+    const resultLimit = this.resolveResultLimit(records);
     const nearMe = this.pickBooleanFromRecords(records, ['near_me', 'nearMe']) ?? false;
     const rawAiResults = this.extractResultArray(records)
       .map((item: unknown, index: number) => this.normalizeItem(item, index, places, options))
       .filter((item): item is AiPlaceSearchResult => item !== null);
     const prioritizedAiResults = this.prioritizeAiResults(rawAiResults, fallbackQuery, options, nearMe);
-    const aiResults = prioritizedAiResults.slice(0, 6);
-    const positionSortApplied = this.didResultOrderChange(rawAiResults.slice(0, 6), aiResults);
+    const aiResults = prioritizedAiResults.slice(0, resultLimit);
+    const positionSortApplied = this.didResultOrderChange(rawAiResults.slice(0, resultLimit), aiResults);
 
     if (aiResults.length > 0) {
       return {
@@ -211,7 +216,7 @@ export class AiPlaceService {
     }
 
     if (fallbackQuery) {
-      return this.buildFallbackExperience(fallbackQuery, places, options, records);
+      return this.buildFallbackExperience(fallbackQuery, places, options, records, resultLimit);
     }
 
     return {
@@ -278,7 +283,7 @@ export class AiPlaceService {
       latitude,
       longitude,
     });
-    const imageUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']) || fallbackImageUrl;
+    const imageUrl = this.resolveImageUrl(record) || fallbackImageUrl;
     const googleMapsUrl = this.pickString(record, ['google_maps_url', 'googleMapsUrl']);
     const types = this.pickStringArray(record, ['types']);
     const externalId = this.pickIdentifier(record, ['place_id', 'placeId', 'id']);
@@ -286,6 +291,12 @@ export class AiPlaceService {
     const visualTheme = routeMatch?.theme || this.pickTheme(category, location, name);
     const visualBadge = routeMatch?.badge || category;
     const visualIcon = routeMatch?.icon || this.pickIcon(category);
+
+    // Extract photo URLs directly from JSON and sanitize them
+    const photo_url = this.sanitizeImageUrl(this.pickString(record, ['photo_url', 'photoUrl']));
+    const photo_urls = this.pickStringArray(record, ['photo_urls', 'photoUrls', 'images', 'imageUrls'])
+      .map((url: string) => this.sanitizeImageUrl(url))
+      .filter((url: string | undefined): url is string => !!url);
 
     return {
       id: externalId || routeMatch?.id || `ai-place-${index}`,
@@ -297,6 +308,8 @@ export class AiPlaceService {
       rating,
       imageUrl,
       fallbackImageUrl,
+      photo_url,
+      photo_urls,
       latitude,
       longitude,
       googleMapsUrl,
@@ -315,9 +328,10 @@ export class AiPlaceService {
     query: string,
     places: Place[],
     options: AiSearchRequestOptions = {},
-    records: Record<string, unknown>[] = []
+    records: Record<string, unknown>[] = [],
+    resultLimit = this.defaultResultLimit
   ): AiPlaceSearchExperience {
-    const fallbackResults = this.buildFallbackResults(query, places, options);
+    const fallbackResults = this.buildFallbackResults(query, places, options, resultLimit);
 
     return {
       results: fallbackResults,
@@ -341,7 +355,8 @@ export class AiPlaceService {
   private buildFallbackResults(
     query: string,
     places: Place[],
-    options: AiSearchRequestOptions = {}
+    options: AiSearchRequestOptions = {},
+    resultLimit = this.defaultResultLimit
   ): AiPlaceSearchResult[] {
     const normalizedTerms = this.buildSearchTerms(query);
 
@@ -385,7 +400,7 @@ export class AiPlaceService {
         const rightDistance = right.distanceKm ?? Number.POSITIVE_INFINITY;
         return leftDistance - rightDistance;
       })
-      .slice(0, 6)
+      .slice(0, resultLimit)
       .map((item: { place: Place; distanceKm?: number }) => ({
         place: item.place,
         distanceKm: item.distanceKm,
@@ -399,6 +414,9 @@ export class AiPlaceService {
         address: place.address,
         rating: place.rating,
         imageUrl: place.imageUrl,
+        fallbackImageUrl: place.fallbackImageUrl,
+        photo_url: place.photo_url,
+        photo_urls: place.photo_urls,
         latitude: place.latitude,
         longitude: place.longitude,
         googleMapsUrl: place.googleMapsUrl,
@@ -421,6 +439,17 @@ export class AiPlaceService {
       suggestedQuestions: [],
       guideCards: [],
     };
+  }
+
+  private resolveResultLimit(records: Record<string, unknown>[]): number {
+    const requestedLimit = this.pickNumberFromRecords(records, ['result_limit', 'resultLimit']);
+
+    if (typeof requestedLimit !== 'number' || !Number.isFinite(requestedLimit)) {
+      return this.defaultResultLimit;
+    }
+
+    const normalizedLimit = Math.floor(requestedLimit);
+    return Math.min(20, Math.max(1, normalizedLimit));
   }
 
   private scorePlace(place: Place, terms: string[]): number {
@@ -673,6 +702,78 @@ export class AiPlaceService {
     return typeof value === 'string' ? value.trim() : undefined;
   }
 
+  private resolveImageUrl(record: Record<string, unknown>): string | undefined {
+    const directUrl = this.sanitizeImageUrl(this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']));
+
+    if (directUrl) {
+      return directUrl;
+    }
+
+    const arrayUrl = this.pickStringArray(record, ['photo_urls', 'photoUrls', 'images', 'imageUrls'])
+      .map((item: string) => item.trim())
+      .map((item: string) => this.sanitizeImageUrl(item))
+      .filter((item: string | undefined): item is string => !!item)
+      .find((item: string) => item.length > 0);
+
+    if (arrayUrl) {
+      return arrayUrl;
+    }
+
+    return undefined;
+  }
+
+  private sanitizeImageUrl(value: string | undefined): string | undefined {
+    const rawValue = value?.trim();
+
+    if (!rawValue) {
+      return undefined;
+    }
+
+    // Reject known invalid static map providers
+    if (rawValue.toLowerCase().includes('staticmap.openstreetmap.de') || 
+        rawValue.toLowerCase().includes('staticmap.php') ||
+        rawValue.toLowerCase().includes('/staticmap')) {
+      console.debug('[Image] Rejected static map URL:', rawValue);
+      return undefined;
+    }
+
+    let normalizedValue = rawValue;
+
+    if (!/^https?:\/\//i.test(normalizedValue)) {
+      if (/^\/\//.test(normalizedValue)) {
+        normalizedValue = `https:${normalizedValue}`;
+      } else if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(normalizedValue)) {
+        normalizedValue = `https://${normalizedValue}`;
+      } else {
+        console.debug('[Image] Rejected invalid URL format:', rawValue);
+        return undefined;
+      }
+    }
+
+    try {
+      const parsedUrl = new URL(normalizedValue);
+
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return undefined;
+      }
+
+      if (parsedUrl.hostname.toLowerCase() === 'staticmap.openstreetmap.de') {
+        return undefined;
+      }
+
+      // Google Places API photo URLs need proxy (server-side API key, CORS blocked)
+      if (parsedUrl.hostname.includes('maps.googleapis.com')
+          && parsedUrl.pathname.includes('/maps/api/place/photo')) {
+        return this.imageProxyService.getImageUrl(parsedUrl.toString()) ?? parsedUrl.toString();
+      }
+
+      return parsedUrl.toString();
+    } catch (error) {
+      console.debug('[Image] Failed to parse URL:', value, error);
+      return undefined;
+    }
+  }
+
   private pickIdentifier(record: Record<string, unknown>, keys: string[]): string | undefined {
     const value = keys
       .map((key: string) => record[key])
@@ -877,6 +978,13 @@ export class AiPlaceService {
     nearMe: boolean,
     positionSortApplied: boolean
   ): string | undefined {
+    // Toujours prioritiser le vrai assistant_reply du backend
+    const backendReply = this.pickStringFromRecords(records, ['assistant_reply', 'assistantReply']);
+    if (backendReply) {
+      return backendReply;
+    }
+
+    // Fallback : générer une note de distance si les résultats ont été réordonnés
     if (
       positionSortApplied
       && !nearMe
@@ -886,7 +994,7 @@ export class AiPlaceService {
       return this.buildDistanceAwareReply(results);
     }
 
-    return this.pickStringFromRecords(records, ['assistant_reply', 'assistantReply']);
+    return undefined;
   }
 
   private buildDistanceAwareReply(results: AiPlaceSearchResult[]): string | undefined {

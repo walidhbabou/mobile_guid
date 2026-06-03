@@ -1,70 +1,107 @@
 <ion-content [fullscreen]="true" class="favorites-screen">
-  <div class="app-screen">  
+  <div class="app-screen favorites-page">
 
-    <section class="favorites-spotlight glass-card" *ngIf="latestFavorite as place">
-      <div class="favorites-spotlight__top">
-        <div>
-          <p class="eyebrow">Dernier enregistre</p>
-          <h2>{{ place.name }}</h2>
-        </div>
-        <span class="soft-pill">{{ place.category }}</span>
+    <section class="fav-hero">
+      <div class="fav-hero__copy">
+        <p class="fav-hero__eyebrow">
+          <ion-icon name="heart"></ion-icon>
+          Ma collection
+        </p>
+        <h1>Favoris</h1>
       </div>
-      <p>{{ place.shortDescription }}</p>
-      <ion-button size="small" [routerLink]="['/tabs/place', place.id]">Ouvrir la fiche</ion-button>
+      <div class="fav-hero__badge" *ngIf="favorites.length">
+        <strong>{{ favorites.length }}</strong>
+        <span>lieu{{ favorites.length > 1 ? 'x' : '' }}</span>
+      </div>
     </section>
 
-    <ng-container *ngIf="favoritePlaces.length; else emptyFavoritesState">
-      <section class="section-heading section-heading--stacked">
-        <h2>Votre collection</h2>
-        <p>Des cartes visuelles pour reprendre la lecture d un lieu en un instant.</p>
+    <div class="fav-stats surface-card" *ngIf="favorites.length">
+      <div class="fav-stat">
+        <div class="fav-stat__icon">
+          <ion-icon name="bookmark"></ion-icon>
+        </div>
+        <div class="fav-stat__text">
+          <strong>{{ favorites.length }}</strong>
+          <span>Sauvegardé{{ favorites.length > 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+      <div class="fav-stat-divider"></div>
+      <div class="fav-stat">
+        <div class="fav-stat__icon fav-stat__icon--green">
+          <ion-icon name="layers-outline"></ion-icon>
+        </div>
+        <div class="fav-stat__text">
+          <strong>{{ categories.length }}</strong>
+          <span>Catégorie{{ categories.length > 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="fav-empty surface-card" *ngIf="!favorites.length">
+      <div class="fav-empty__rings">
+        <div class="fav-ring fav-ring--1"></div>
+        <div class="fav-ring fav-ring--2"></div>
+        <div class="fav-ring fav-ring--3"></div>
+      </div>
+      <div class="fav-empty__icon">
+        <ion-icon name="heart-outline"></ion-icon>
+      </div>
+      <h2>Aucun favori pour l'instant</h2>
+      <p>Parcourez les lieux et touchez l'icône cœur pour les sauvegarder ici.</p>
+      <ion-button expand="block" [routerLink]="['/tabs/home']" class="fav-empty__cta">
+        <ion-icon name="compass-outline" slot="start"></ion-icon>
+        Explorer les lieux
+      </ion-button>
+    </div>
+
+    <ng-container *ngIf="favorites.length">
+
+      <section class="fav-filters" aria-label="Filtres par catégorie" *ngIf="categories.length > 1">
+        <button
+          type="button"
+          class="fav-chip"
+          [class.fav-chip--active]="selectedCategory === 'Tout'"
+          (click)="selectCategory('Tout')"
+        >
+          <ion-icon name="apps-outline"></ion-icon>
+          Tout
+        </button>
+        <button
+          type="button"
+          class="fav-chip"
+          *ngFor="let cat of categories"
+          [class.fav-chip--active]="selectedCategory === cat"
+          (click)="selectCategory(cat)"
+        >
+          {{ cat }}
+        </button>
       </section>
 
-      <button
-        type="button"
-        class="favorite-card surface-card"
-        *ngFor="let place of favoritePlaces"
-        [routerLink]="['/tabs/place', place.id]"
-      >
-        <div class="favorite-card__visual scenic-visual" [ngClass]="place.theme">
-          <img
-            *ngIf="place.imageUrl"
-            class="favorite-card__image"
-            [src]="place.imageUrl"
-            [alt]="place.name"
-            loading="lazy"
-            decoding="async"
-            (error)="handlePlaceImageError(place)"
-          />
-          <span class="visual-badge">{{ place.badge }}</span>
-          <span class="visual-icon">
-            <ion-icon [name]="place.icon"></ion-icon>
-          </span>
+      <div class="fav-list" *ngIf="filteredFavorites.length; else noMatch">
+        <div
+          *ngFor="let place of filteredFavorites; trackBy: trackById; let i = index"
+          class="fav-list__item"
+          [style.--item-i]="i"
+        >
+          <app-place-card
+            [place]="place"
+            [favorite]="true"
+            (toggleFavorite)="onRemoveFavorite($event)"
+            (selectPlace)="onSelectPlace($event)"
+            (viewOnMap)="onViewOnMap($event)"
+            (openRoute)="onOpenRoute($event)"
+          ></app-place-card>
         </div>
+      </div>
 
-        <div class="favorite-card__content">
-          <div>
-            <h2>{{ place.name }}</h2>
-            <p>{{ place.shortDescription }}</p>
-          </div>
-
-          <div class="favorite-card__footer">
-            <div class="rating-text">
-              <span class="stars">{{ place.starsLabel }}</span>
-              <strong>{{ place.rating }}</strong>
-              <span>/ 5</span>
-            </div>
-
-            <ion-icon name="chevron-forward-outline"></ion-icon>
-          </div>
+      <ng-template #noMatch>
+        <div class="fav-no-match">
+          <ion-icon name="search-outline"></ion-icon>
+          <p>Aucun favori dans cette catégorie.</p>
         </div>
-      </button>
+      </ng-template>
+
     </ng-container>
 
-    <ng-template #emptyFavoritesState>
-      <section class="surface-card empty-favorites-state">
-        <h2>Aucun favori pour le moment</h2>
-        <p>Ouvrez une fiche detaillee puis utilisez le coeur pour commencer a composer votre carnet d adresses.</p>
-      </section>
-    </ng-template>
   </div>
 </ion-content>

@@ -2,15 +2,20 @@ import { of, throwError } from 'rxjs';
 
 import { Place } from '../data/tourism.data';
 import { ApiService } from './api.service';
+import { ImageProxyService } from './image-proxy.service';
 import { PlaceCatalogService } from './place-catalog.service';
 
 describe('PlaceCatalogService', () => {
   let service: PlaceCatalogService;
   let apiServiceSpy: jasmine.SpyObj<ApiService>;
+  let imageProxyServiceSpy: jasmine.SpyObj<ImageProxyService>;
 
   beforeEach(() => {
-    apiServiceSpy = jasmine.createSpyObj<ApiService>('ApiService', ['getPlaces', 'getPlaceById', 'updatePlaceByPlaceId']);
-    service = new PlaceCatalogService(apiServiceSpy);
+    apiServiceSpy = jasmine.createSpyObj<ApiService>('ApiService', ['getPlaces', 'getPlaceById', 'updatePlaceByPlaceId', 'getBaseUrl']);
+    imageProxyServiceSpy = jasmine.createSpyObj<ImageProxyService>('ImageProxyService', ['getImageUrl']);
+    imageProxyServiceSpy.getImageUrl.and.callFake((url: string | undefined) => url);
+    apiServiceSpy.getBaseUrl.and.returnValue('http://localhost:8081');
+    service = new PlaceCatalogService(apiServiceSpy, imageProxyServiceSpy);
     localStorage.clear();
   });
 
@@ -68,9 +73,31 @@ describe('PlaceCatalogService', () => {
       expect(places[0].category).toBe('Beach');
       expect(places[0].theme).toBe('theme-agadir');
       expect(places[0].icon).toBe('water-outline');
-      expect(places[0].imageUrl).toContain('maps.googleapis.com/maps/api/streetview');
-      expect(places[0].fallbackImageUrl).toContain('maps.googleapis.com/maps/api/streetview');
+      expect(places[0].imageUrl).toBeUndefined();
+      expect(places[0].fallbackImageUrl).toContain('picsum.photos');
       expect(places[0].googleMapsUrl).toBe('https://www.google.com/maps/search/?api=1&query=30.42,-9.6');
+    });
+  });
+
+  it('should keep direct JSON image URLs when they are available', () => {
+    apiServiceSpy.getPlaces.and.returnValue(of({
+      data: {
+        results: [
+          {
+            place_id: 'museum-1',
+            name: 'Musee',
+            city: 'rabat',
+            rating: '4.2',
+            photo_url: 'https://example.com/museum.jpg',
+          },
+        ],
+      },
+    }));
+
+    service.getPlaces().subscribe((places: Place[]) => {
+      expect(places.length).toBe(1);
+      expect(places[0].imageUrl).toBe('https://example.com/museum.jpg');
+      expect(places[0].fallbackImageUrl).toContain('picsum.photos');
     });
   });
 

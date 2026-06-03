@@ -24,34 +24,23 @@
           type="button"
           class="circle-button"
           [class.circle-button--active]="isFavorite"
-          [disabled]="isFavoriteLoading"
           (click)="toggleFavorite()"
         >
           <ion-icon [name]="isFavorite ? 'heart' : 'heart-outline'"></ion-icon>
         </button>
 
-        <button
-          *ngIf="canEditCurrentPlace(currentPlace)"
-          type="button"
-          class="circle-button"
-          [class.circle-button--active]="isEditing"
-          (click)="isEditing ? cancelEditing() : startEditing()"
-        >
-          <ion-icon [name]="isEditing ? 'close-outline' : 'create-outline'"></ion-icon>
-        </button>
       </div>
     </section>
 
     <section class="hero-card surface-card">
       <div class="hero-card__visual scenic-visual" [ngClass]="currentPlace.theme">
         <img
-          *ngIf="currentPlace.imageUrl"
           class="hero-card__image"
-          [src]="currentPlace.imageUrl"
+          [src]="getDetailImageSrc(currentPlace)"
           [alt]="currentPlace.name"
           loading="lazy"
           decoding="async"
-          (error)="handlePlaceImageError()"
+          (error)="handlePlaceImageError($event)"
         />
         <span class="visual-badge">{{ currentPlace.badge }}</span>
         <span class="visual-icon">
@@ -70,6 +59,21 @@
 
         <div class="highlight-row">
           <span class="soft-pill" *ngFor="let highlight of currentPlace.highlights">{{ highlight }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="surface-card photo-gallery-card" *ngIf="photoGallery.length">
+      <p class="eyebrow">Photos</p>
+      <div class="photo-gallery">
+        <div class="photo-gallery__item" *ngFor="let photoUrl of photoGallery">
+          <img
+            [src]="photoUrl"
+            [alt]="currentPlace.name"
+            loading="lazy"
+            decoding="async"
+            (error)="handleGalleryImageError($event)"
+          />
         </div>
       </div>
     </section>
@@ -100,85 +104,42 @@
       </button>
     </section>
 
-    <section class="surface-card favorite-feedback" *ngIf="favoriteMessage">
-      <p>{{ favoriteMessage }}</p>
-    </section>
-
-    <section class="surface-card editor-card" *ngIf="canEditCurrentPlace(currentPlace)">
+    <section class="surface-card map-card">
       <div class="section-heading">
-        <h2>Informations du lieu</h2>
-        <ion-button
-          size="small"
-          fill="outline"
-          *ngIf="!isEditing"
-          (click)="startEditing()"
+        <div>
+          <p class="eyebrow">Carte interactive</p>
+          <h2>Localisation Leaflet</h2>
+        </div>
+
+        <a
+          class="map-card__link"
+          [routerLink]="['/tabs/map']"
+          [queryParams]="buildMapQueryParams(currentPlace)"
         >
-          Modifier
-        </ion-button>
+          Ouvrir la carte
+        </a>
       </div>
 
-      <ng-container *ngIf="!isEditing; else editPlaceForm">
-        <div class="detail-summary">
+      <div class="map-card__map">
+        <div #placeMap class="leaflet-map"></div>
+
+        <div class="map-card__overlay" *ngIf="isMapLoading || mapErrorMessage">
+          <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
           <div>
-            <span>Ville</span>
-            <strong>{{ currentPlace.location }}</strong>
-          </div>
-          <div>
-            <span>Categorie</span>
-            <strong>{{ currentPlace.category }}</strong>
-          </div>
-          <div>
-            <span>Adresse</span>
-            <strong>{{ currentPlace.address }}</strong>
+            <strong>{{ isMapLoading ? 'Chargement de la carte Leaflet...' : 'Carte indisponible' }}</strong>
+            <p>{{ isMapLoading ? 'La carte se prepare avec les tuiles OpenStreetMap.' : mapErrorMessage }}</p>
           </div>
         </div>
-      </ng-container>
 
-      <ng-template #editPlaceForm>
-        <div class="editor-grid">
-          <label class="editor-field">
-            <span>Nom</span>
-            <input type="text" [(ngModel)]="editForm.name" placeholder="Nom du lieu" />
-          </label>
-
-          <label class="editor-field">
-            <span>Ville</span>
-            <input type="text" [(ngModel)]="editForm.location" placeholder="Ville" />
-          </label>
-
-          <label class="editor-field">
-            <span>Categorie</span>
-            <input type="text" [(ngModel)]="editForm.category" placeholder="Categorie" />
-          </label>
-
-          <label class="editor-field">
-            <span>Adresse</span>
-            <textarea rows="2" [(ngModel)]="editForm.address" placeholder="Adresse"></textarea>
-          </label>
-
-          <label class="editor-field editor-field--full">
-            <span>Description</span>
-            <textarea rows="5" [(ngModel)]="editForm.description" placeholder="Description du lieu"></textarea>
-          </label>
-
-          <label class="editor-field editor-field--full">
-            <span>Image URL</span>
-            <input type="url" [(ngModel)]="editForm.imageUrl" placeholder="https://..." />
-          </label>
+        <div class="map-card__empty" *ngIf="!hasCoordinates(currentPlace)">
+          <ion-icon name="location-outline"></ion-icon>
+          <span>Aucune coordonnee disponible pour ce lieu.</span>
         </div>
-
-        <div class="editor-actions">
-          <ion-button size="small" fill="outline" (click)="cancelEditing()">Annuler</ion-button>
-          <ion-button size="small" [disabled]="isSaving" (click)="savePlaceChanges()">
-            <ion-spinner *ngIf="isSaving" name="crescent"></ion-spinner>
-            <span *ngIf="!isSaving">Enregistrer</span>
-          </ion-button>
-        </div>
-      </ng-template>
+      </div>
     </section>
 
-    <section class="surface-card favorite-feedback" *ngIf="saveMessage">
-      <p>{{ saveMessage }}</p>
+    <section class="surface-card favorite-feedback" *ngIf="favoriteMessage">
+      <p>{{ favoriteMessage }}</p>
     </section>
 
     <section class="audio-card glass-card">
@@ -189,8 +150,6 @@
         </div>
         <ion-icon name="volume-high-outline"></ion-icon>
       </div>
-
-      <p class="audio-card__copy">{{ currentPlace.longDescription }}</p>
 
       <div class="audio-wave">
         <span *ngFor="let level of audioWave" [style.height.px]="level"></span>

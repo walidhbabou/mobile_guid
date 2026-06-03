@@ -1,86 +1,71 @@
-<button
-  type="button"
-  class="place-card surface-card"
+<article
+  class="place-card"
   [class.active]="selected"
   (click)="onSelect()"
 >
-  <div class="place-card__image scenic-visual" [ngClass]="place.theme">
+  <div class="place-card__image scenic-visual" [ngClass]="place.theme" [class.image--loading]="!imageLoaded">
     <img
-      *ngIf="place.imageUrl || place.fallbackImageUrl"
-      [src]="place.imageUrl || place.fallbackImageUrl"
+      [src]="getImageSrc()"
       [alt]="place.name"
-      loading="lazy"
       decoding="async"
-      (error)="handleImageError()"
+      [class.is-loaded]="imageLoaded"
+      (error)="handleImageError($event)"
+      (load)="onImageLoad()"
     />
+
+    <span class="place-card__badge">{{ place.badge || 'Suggestion' }}</span>
+
+    <button
+      type="button"
+      class="place-card__favorite"
+      [class.is-active]="favorite"
+      (click)="onToggleFavorite($event)"
+      [attr.aria-label]="favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'"
+    >
+      <ion-icon [name]="favorite ? 'heart' : 'heart-outline'"></ion-icon>
+    </button>
   </div>
 
   <div class="place-card__body">
-    <div class="place-card__top">
-      <div class="place-card__title">
-        <h3>{{ place.name }}</h3>
-        <p>{{ place.location }}</p>
-      </div>
-
-      <button
-        type="button"
-        class="icon-chip"
-        [class.is-active]="favorite"
-        (click)="onToggleFavorite($event)"
-        [attr.aria-label]="favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'"
-      >
-        <ion-icon [name]="favorite ? 'heart' : 'heart-outline'"></ion-icon>
-      </button>
+    <div class="place-card__meta-row">
+      <span class="place-card__pill">{{ place.category }}</span>
+      <span class="place-card__pill" *ngIf="place.types?.length">{{ place.types?.[0] }}</span>
+      <span class="place-card__distance" *ngIf="distanceKm !== undefined">
+        <ion-icon name="location-outline"></ion-icon>
+        {{ distanceKm | number:'1.1-1' }} km
+      </span>
     </div>
 
-    <div class="place-card__meta">
-      <span class="pill" *ngIf="place.rating">
-        <ion-icon name="star-outline"></ion-icon>
+    <div class="place-card__title">
+      <h3>{{ place.name }}</h3>
+      <p>{{ place.location }}</p>
+    </div>
+
+    <p class="place-card__description" *ngIf="place.shortDescription">{{ place.shortDescription }}</p>
+    <p class="place-card__address" *ngIf="place.address">{{ place.address }}</p>
+
+    <div class="place-card__footer">
+      <div class="place-card__rating" *ngIf="place.rating">
+        <span class="stars">★★★★★</span>
         <strong>{{ place.rating | number:'1.0-1' }}</strong>
-      </span>
-
-      <span class="pill" *ngIf="distanceKm !== undefined">
-        <ion-icon name="navigate-outline"></ion-icon>
-        {{ distanceKm | number:'1.0-1' }} km
-      </span>
-
-      <span class="pill">
-        <ion-icon name="pricetag-outline"></ion-icon>
-        {{ place.category }}
-      </span>
-    </div>
-
-    <div class="place-card__smart" *ngIf="meta as m">
-      <div class="smart-row">
-        <span class="smart-item">
-          <ion-icon name="cash-outline"></ion-icon>
-          ~{{ m.estimatedBudget }} MAD
-        </span>
-        <span class="smart-item">
-          <ion-icon name="time-outline"></ion-icon>
-          ~{{ m.avgDurationMinutes }} min
-        </span>
-        <span class="smart-item smart-item--pop">
-          <span class="heat-dot" [style.background]="heatColor"></span>
-          {{ popularityLabel }}
-        </span>
       </div>
 
-      <div class="tags" *ngIf="m.tags.length">
-        <span class="tag" *ngFor="let tag of m.tags">{{ tag }}</span>
-      </div>
+      <span class="place-card__match" *ngIf="meta as m">
+        {{ popularityLabel }} match
+      </span>
     </div>
 
     <div class="place-card__actions">
-      <button type="button" class="action" (click)="onViewOnMap($event)">
-        <ion-icon name="pin-outline"></ion-icon>
-        Voir sur carte
+      <a class="action action--primary" [routerLink]="['/tabs/place', place.id]" (click)="$event.stopPropagation()">
+        Voir la fiche
+      </a>
+      <button type="button" class="action action--outline" (click)="onViewOnMap($event)">
+        Carte
       </button>
-      <button type="button" class="action" (click)="onOpenRoute($event)">
-        <ion-icon name="compass-outline"></ion-icon>
-        Itineraire
+      <button type="button" class="action action--outline" (click)="onOpenRoute($event)">
+        Itinéraire
       </button>
     </div>
   </div>
-</button>
+</article>
 

@@ -20,6 +20,8 @@ export interface Place {
   highlights: string[];
   imageUrl?: string;
   fallbackImageUrl?: string;
+  photo_url?: string;
+  photo_urls?: string[];
   googleMapsUrl?: string;
   latitude?: number;
   longitude?: number;

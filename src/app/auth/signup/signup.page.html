@@ -1,49 +1,66 @@
-<ion-content [fullscreen]="true" class="simple-auth-screen signup-screen">
-  <div class="simple-auth">
-    <section class="brand-block">
-      <div class="brand-mark">
-        <img src="assets/logo.jpg" alt="Atlas Guide" class="brand-mark__image" />
+<ion-content [fullscreen]="true" class="auth-screen">
+  <div class="auth-root">
+
+    <!-- ── Header bleu ────────────────────────────── -->
+    <div class="auth-header">
+      <div class="geo-lines" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--a" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--b" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--c" aria-hidden="true"></div>
+
+      <div class="header-inner">
+        <!-- Logo animé -->
+        <div class="logo-wrap">
+          <div class="logo-ring"></div>
+          <img src="assets/logo.jpg" alt="Atlas Guide" class="logo-img" />
+        </div>
+
+        <span class="header-badge">ATLAS GUIDE</span>
+        <h1 class="header-title">Rejoignez<br>l'aventure</h1>
+        <p class="header-sub">Créez votre compte voyageur</p>
       </div>
+    </div>
 
-      <p>Explorez le Maroc intelligemment</p>
-    </section>
+    <!-- ── Corps beige ────────────────────────────── -->
+    <div class="auth-body">
 
-    <section class="auth-panel">
-      <div class="auth-panel__header">
-        <h2>Creation de compte</h2>
-        <p>Creez votre espace pour sauvegarder vos lieux et vos parcours.</p>
+      <!-- Toggle Connexion / Inscription -->
+      <div class="auth-tabs">
+        <button type="button" class="tab-btn" (click)="goToLogin()">Connexion</button>
+        <button type="button" class="tab-btn tab-btn--active">Inscription</button>
       </div>
 
       <form [formGroup]="signupForm" (ngSubmit)="signup()" class="auth-form">
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
-            <ion-input formControlName="firstName" type="text" placeholder="Prenom"></ion-input>
-          </div>
-          <small
-            class="error-text"
-            *ngIf="signupForm.get('firstName')?.invalid && signupForm.get('firstName')?.touched"
-          >
-            Minimum 2 caracteres.
-          </small>
-        </label>
 
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
-            <ion-input formControlName="lastName" type="text" placeholder="Nom"></ion-input>
-          </div>
-          <small
-            class="error-text"
-            *ngIf="signupForm.get('lastName')?.invalid && signupForm.get('lastName')?.touched"
-          >
-            Minimum 2 caracteres.
-          </small>
-        </label>
+        <!-- Prénom + Nom côte à côte -->
+        <div class="field-row">
+          <label class="field anim-field" style="--i:0">
+            <div class="field__wrap">
+              <ion-icon name="person-outline" class="field__icon"></ion-icon>
+              <ion-input formControlName="firstName" type="text" placeholder="Prénom"></ion-input>
+            </div>
+            <small class="field__error"
+              *ngIf="signupForm.get('firstName')?.invalid && signupForm.get('firstName')?.touched">
+              Min. 2 caractères.
+            </small>
+          </label>
 
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="mail-outline" aria-hidden="true"></ion-icon>
+          <label class="field anim-field" style="--i:1">
+            <div class="field__wrap">
+              <ion-icon name="person-outline" class="field__icon"></ion-icon>
+              <ion-input formControlName="lastName" type="text" placeholder="Nom"></ion-input>
+            </div>
+            <small class="field__error"
+              *ngIf="signupForm.get('lastName')?.invalid && signupForm.get('lastName')?.touched">
+              Min. 2 caractères.
+            </small>
+          </label>
+        </div>
+
+        <!-- Email -->
+        <label class="field anim-field" style="--i:2">
+          <div class="field__wrap">
+            <ion-icon name="mail-outline" class="field__icon"></ion-icon>
             <ion-input
               formControlName="email"
               type="email"
@@ -51,85 +68,98 @@
               placeholder="Adresse e-mail"
             ></ion-input>
           </div>
-          <small
-            class="error-text"
-            *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched"
-          >
+          <small class="field__error"
+            *ngIf="signupForm.get('email')?.invalid && signupForm.get('email')?.touched">
             Entrez une adresse valide.
           </small>
         </label>
 
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+        <!-- Mot de passe -->
+        <label class="field anim-field" style="--i:3">
+          <div class="field__wrap">
+            <ion-icon name="lock-closed-outline" class="field__icon"></ion-icon>
             <ion-input
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
               autocomplete="new-password"
               placeholder="Mot de passe"
             ></ion-input>
-            <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
+            <button type="button" class="field__eye" (click)="togglePasswordVisibility()">
               <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small
-            class="error-text"
-            *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched"
-          >
-            Utilisez au moins 6 caracteres.
+          <small class="field__error"
+            *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched">
+            Utilisez au moins 6 caractères.
           </small>
         </label>
 
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="shield-checkmark-outline" aria-hidden="true"></ion-icon>
+        <!-- Confirmer mot de passe -->
+        <label class="field anim-field" style="--i:4">
+          <div class="field__wrap">
+            <ion-icon name="shield-checkmark-outline" class="field__icon"></ion-icon>
             <ion-input
               formControlName="confirmPassword"
               [type]="showConfirmPassword ? 'text' : 'password'"
               autocomplete="new-password"
               placeholder="Confirmer le mot de passe"
             ></ion-input>
-            <button type="button" class="icon-button" (click)="toggleConfirmPasswordVisibility()">
+            <button type="button" class="field__eye" (click)="toggleConfirmPasswordVisibility()">
               <ion-icon [name]="showConfirmPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small
-            class="error-text"
-            *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched"
-          >
+          <small class="field__error"
+            *ngIf="signupForm.get('confirmPassword')?.invalid && signupForm.get('confirmPassword')?.touched">
             Confirmation requise.
           </small>
-          <small
-            class="error-text"
-            *ngIf="signupForm.hasError('passwordMismatch') && signupForm.get('confirmPassword')?.touched"
-          >
+          <small class="field__error"
+            *ngIf="signupForm.hasError('passwordMismatch') && signupForm.get('confirmPassword')?.touched">
             Les mots de passe ne correspondent pas.
           </small>
         </label>
 
-        <label class="check-row">
+        <!-- Conditions -->
+        <label class="check-row anim-field" style="--i:5">
           <ion-checkbox formControlName="agreeToTerms"></ion-checkbox>
-          <span>J'accepte les conditions d'utilisation.</span>
+          <span>J'accepte les <span class="terms-link">conditions d'utilisation</span>.</span>
         </label>
-        <small
-          class="error-text"
-          *ngIf="signupForm.get('agreeToTerms')?.invalid && signupForm.get('agreeToTerms')?.touched"
-        >
+        <small class="field__error"
+          *ngIf="signupForm.get('agreeToTerms')?.invalid && signupForm.get('agreeToTerms')?.touched">
           Vous devez accepter les conditions.
         </small>
 
-        <ion-button type="submit" expand="block" class="primary-cta" [disabled]="isLoading">
+        <!-- Bouton principal -->
+        <ion-button type="submit" expand="block" class="cta-btn anim-field" style="--i:6" [disabled]="isLoading">
           <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
-          <span *ngIf="!isLoading">Creer mon compte</span>
+          <span *ngIf="!isLoading">Créer mon compte &nbsp;→</span>
         </ion-button>
+
       </form>
 
-      <p class="auth-footer">
-        Vous avez deja un compte ?
-        <button type="button" class="text-link strong-link" (click)="goToLogin()">
-          Se connecter
+      <!-- Séparateur -->
+      <div class="divider anim-field" style="--i:7">
+        <span class="divider__line"></span>
+        <span class="divider__label">ou continuer avec</span>
+        <span class="divider__line"></span>
+      </div>
+
+      <!-- Boutons OAuth -->
+      <div class="oauth-row anim-field" style="--i:8">
+        <button type="button" class="oauth-btn" (click)="loginWithGoogle()">
+          <ion-icon name="logo-google"></ion-icon>
+          <span>Google</span>
         </button>
+        <button type="button" class="oauth-btn" (click)="loginWithGoogle()">
+          <ion-icon name="logo-apple"></ion-icon>
+          <span>Apple</span>
+        </button>
+      </div>
+
+      <p class="auth-hint anim-field" style="--i:9">
+        Déjà un compte ?
+        <button type="button" class="auth-hint__link" (click)="goToLogin()">Se connecter</button>
       </p>
-    </section>
+
+    </div>
   </div>
 </ion-content>

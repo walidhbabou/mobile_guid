@@ -13,39 +13,45 @@
   grid-template-columns: auto 1fr auto;
   gap: 14px;
   align-items: center;
+  animation: fadeUp 500ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .detail-topbar__copy {
   p {
     margin: 0;
     color: var(--app-text-muted);
-    font-size: 0.84rem;
+    font-size: 0.82rem;
     font-weight: 700;
   }
 
   h1 {
     margin: 4px 0 0;
-    font-size: 1.7rem;
+    font-size: 1.65rem;
     font-weight: 800;
+    letter-spacing: -0.025em;
+    color: #15304f;
   }
 }
 
 .detail-topbar__actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .circle-button {
   width: 44px;
   height: 44px;
-  border-radius: 16px;
-  border: 1px solid rgba(110, 140, 172, 0.18);
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  border: 1px solid rgba(200, 215, 235, 0.55);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: grid;
   place-items: center;
   color: var(--ion-text-color);
-  box-shadow: var(--app-shadow-card);
+  box-shadow: 0 4px 14px rgba(36, 74, 123, 0.10);
+  transition: transform 160ms ease, box-shadow 160ms ease;
 
   ion-icon {
     font-size: 1.15rem;
@@ -54,11 +60,18 @@
   &:disabled {
     opacity: 0.7;
   }
+
+  &:active {
+    transform: scale(0.93);
+    box-shadow: 0 2px 8px rgba(36, 74, 123, 0.08);
+  }
 }
 
 .circle-button--active {
   background: linear-gradient(135deg, #ef6c57 0%, #f5a27f 100%);
   color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 8px 18px rgba(239, 108, 87, 0.32);
 }
 
 .hero-card {
@@ -94,8 +107,121 @@
   margin-top: 16px;
 }
 
+.photo-gallery-card {
+  padding: 18px;
+  overflow: hidden;
+
+  .eyebrow {
+    margin-bottom: 14px;
+  }
+}
+
+.photo-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.photo-gallery__item {
+  flex: 0 0 auto;
+  width: 180px;
+  height: 130px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(74, 150, 235, 0.10), rgba(18, 30, 53, 0.06));
+  scroll-snap-align: start;
+  border: 1px solid rgba(113, 142, 173, 0.12);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 200ms ease;
+
+    &:hover {
+      transform: scale(1.04);
+    }
+  }
+}
+
 .info-list {
   padding: 8px 18px;
+}
+
+.map-card {
+  padding: 20px;
+}
+
+.map-card__link {
+  color: var(--ion-color-primary);
+  font-weight: 800;
+  text-decoration: none;
+  font-size: 0.92rem;
+}
+
+.map-card__map {
+  position: relative;
+  margin-top: 14px;
+  min-height: 280px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(74, 150, 235, 0.08), rgba(18, 30, 53, 0.04));
+  border: 1px solid rgba(113, 142, 173, 0.14);
+}
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.map-card__overlay,
+.map-card__empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.map-card__overlay {
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ion-text-color);
+
+  strong {
+    display: block;
+    font-size: 1rem;
+  }
+
+  p {
+    margin: 6px 0 0;
+    color: var(--app-text-muted);
+    line-height: 1.45;
+  }
+}
+
+.map-card__empty {
+  pointer-events: none;
+  gap: 10px;
+  color: var(--app-text-muted);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 255, 255, 0.2));
+
+  ion-icon {
+    font-size: 1.7rem;
+    color: var(--ion-color-primary);
+  }
 }
 
 .info-row {
@@ -292,12 +418,6 @@
   }
 }
 
-.audio-card__copy {
-  margin: 16px 0 0;
-  color: var(--app-text-muted);
-  line-height: 1.65;
-}
-
 .audio-wave {
   height: 64px;
   display: flex;
@@ -428,6 +548,21 @@
 @media (max-width: 640px) {
   .editor-grid {
     grid-template-columns: 1fr;
+  }
+
+  .map-card,
+  .reviews,
+  .editor-card,
+  .review-form-card,
+  .audio-card,
+  .favorite-feedback {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .map-card__map,
+  .leaflet-map {
+    min-height: 220px;
   }
 
   .rating-chip {

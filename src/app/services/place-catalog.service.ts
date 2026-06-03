@@ -1,9 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { environment } from '../../environments/environment';
 import { NotificationItem, Place, ProfileAction, ProfileStat } from '../data/tourism.data';
 import { ApiService } from './api.service';
+import { ImageProxyService } from './image-proxy.service';
 
 export interface PlaceMarker {
   place: Place;
@@ -39,7 +39,7 @@ export class PlaceCatalogService {
   private readonly recentPlacesKey = 'recentPlaceIds';
   private readonly allPlacesLabel = 'Tout';
 
-  constructor(private apiService: ApiService) {}
+  constructor(private apiService: ApiService, private imageProxyService: ImageProxyService) {}
 
   getPlaces(): Observable<Place[]> {
     return this.apiService.getPlaces().pipe(
@@ -258,27 +258,92 @@ export class PlaceCatalogService {
   }
 
   buildFallbackImageUrl(details: Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'>): string | undefined {
-    const apiKey = environment.googleMapsApiKey?.trim();
+    const label = details.name?.trim() || details.address?.trim() || 'Destination';
+    const seed = this.slugify(label) || 'morocco';
+    return `https://picsum.photos/seed/${seed}/600/400`;
+  }
 
-    if (!apiKey) {
-      return undefined;
-    }
-
-    const location = typeof details.latitude === 'number' && typeof details.longitude === 'number'
-      ? `${details.latitude},${details.longitude}`
-      : [details.name, details.address].filter((segment: string | undefined) => !!segment?.trim()).join(', ');
-
-    if (!location) {
-      return undefined;
-    }
-
-    const params = new URLSearchParams({
-      size: '1200x800',
-      location,
-      key: apiKey,
+  getStaticMap(lat: number, lng: number): string {
+    return this.buildInlinePlaceholderImageUrl({
+      label: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+      latitude: lat,
+      longitude: lng,
     });
+  }
 
-    return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
+  sanitizeImageUrl(value: string | undefined): string | undefined {
+    const rawValue = value?.trim();
+
+    if (!rawValue) {
+      return undefined;
+    }
+
+    // Allow data URIs and blob URLs
+    if (/^(data|blob):/i.test(rawValue)) {
+      return rawValue;
+    }
+
+    // Reject known invalid static map providers
+    if (rawValue.toLowerCase().includes('staticmap.openstreetmap.de') || 
+        rawValue.toLowerCase().includes('staticmap.php') ||
+        rawValue.toLowerCase().includes('/staticmap')) {
+      console.debug('[Image] Rejected static map URL:', rawValue);
+      return undefined;
+    }
+
+    // Allow local asset paths
+    if (/^\/?assets\//i.test(rawValue)) {
+      return rawValue.replace(/^\/+/, '');
+    }
+
+    let normalizedValue = rawValue;
+
+    // For relative URLs, resolve against base URL
+    if (!/^https?:\/\//i.test(normalizedValue)) {
+      // Allow protocol-relative URLs (//cdn.example.com/image.jpg)
+      if (/^\/\//.test(normalizedValue)) {
+        normalizedValue = `https:${normalizedValue}`;
+      }
+      // Allow URLs without protocol (example.com/image.jpg)
+      else if (/^[a-z0-9.-]+\.[a-z]{2,}\//i.test(normalizedValue)) {
+        normalizedValue = `https://${normalizedValue}`;
+      }
+      // Reject relative paths that could point to invalid endpoints
+      else if (rawValue.includes('.php') || rawValue.startsWith('/api/') ||
+          (rawValue.includes('/') && !rawValue.startsWith('/assets'))) {
+        console.debug('[Image] Rejected invalid relative URL:', rawValue);
+        return undefined;
+      }
+      else {
+        try {
+          return new URL(normalizedValue, this.apiService.getBaseUrl()).toString();
+        } catch {
+          return undefined;
+        }
+      }
+    }
+
+    try {
+      const parsedUrl = new URL(normalizedValue);
+
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        return undefined;
+      }
+
+      if (parsedUrl.hostname.toLowerCase() === 'staticmap.openstreetmap.de') {
+        return undefined;
+      }
+
+      // Google Places API photo URLs need to go through proxy (CORS / server-side key)
+      if (parsedUrl.hostname.includes('maps.googleapis.com') &&
+          parsedUrl.pathname.includes('/maps/api/place/photo')) {
+        return this.imageProxyService.getImageUrl(parsedUrl.toString()) ?? parsedUrl.toString();
+      }
+
+      return parsedUrl.toString();
+    } catch {
+      return undefined;
+    }
   }
 
   trackPlaceVisit(placeId: string): void {
@@ -325,16 +390,24 @@ export class PlaceCatalogService {
     const rating = this.pickNumber(record, ['rating', 'score']) ?? 0;
     const latitude = this.pickNumber(record, ['latitude', 'lat']);
     const longitude = this.pickNumber(record, ['longitude', 'lng', 'lon']);
+    const imageUrl = this.pickImageUrl(record);
+    const googleMapsUrl = this.pickGoogleMapsUrl(record, name, address, latitude, longitude);
+    const backendId = this.pickNumber(record, ['id']);
+    const externalPlaceId = this.pickIdentifier(record, ['place_id', 'placeId']);
+    
+    // Extract photo URLs directly from JSON and sanitize them
+    const photo_url = this.sanitizeImageUrl(this.pickString(record, ['photo_url', 'photoUrl']));
+    const photo_urls = this.pickStringArray(record, ['photo_urls', 'photoUrls', 'images', 'imageUrls'])
+      .map((url: string) => this.sanitizeImageUrl(url))
+      .filter((url: string | undefined): url is string => !!url);
+
+    // Build fallback image URL (generates a placeholder if no real image)
     const fallbackImageUrl = this.buildFallbackImageUrl({
       name,
       address,
       latitude,
       longitude,
-    } as Pick<Place, 'name' | 'address' | 'latitude' | 'longitude'>);
-    const imageUrl = this.pickImageUrl(record) || fallbackImageUrl;
-    const googleMapsUrl = this.pickGoogleMapsUrl(record, name, address, latitude, longitude);
-    const backendId = this.pickNumber(record, ['id']);
-    const externalPlaceId = this.pickIdentifier(record, ['place_id', 'placeId']);
+    });
 
     return {
       id: externalPlaceId || this.pickIdentifier(record, ['id']) || this.slugify(`${name}-${location}-${index}`),
@@ -358,6 +431,8 @@ export class PlaceCatalogService {
       highlights: this.buildHighlights(types, location, address),
       imageUrl,
       fallbackImageUrl,
+      photo_url,
+      photo_urls,
       googleMapsUrl,
       latitude,
       longitude,
@@ -497,8 +572,8 @@ export class PlaceCatalogService {
   private pickTheme(category: string, location: string, name: string, types: string[]): string {
     const text = this.normalizeText(`${category} ${location} ${name} ${types.join(' ')}`);
 
-    if (text.includes('plage') || text.includes('beach') || text.includes('ocean')) {
-      return 'theme-agadir';
+    if (text.includes('plage') || text.includes('beach') || text.includes('ocean') || text.includes('water')) {
+      return text.includes('teal') || text.includes('lagon') ? 'theme-blue-teal' : 'theme-blue-ocean';
     }
 
     if (text.includes('marrakech')) {
@@ -509,11 +584,15 @@ export class PlaceCatalogService {
       return 'theme-chefchaouen';
     }
 
-    if (text.includes('zoo') || text.includes('family') || text.includes('parc')) {
-      return 'theme-zoo';
+    if (text.includes('zoo') || text.includes('family') || text.includes('parc') || text.includes('nature') || text.includes('garden')) {
+      return 'theme-blue-teal';
     }
 
-    return 'theme-rabat';
+    if (text.includes('rabat') || text.includes('capital')) {
+      return 'theme-rabat';
+    }
+
+    return 'theme-blue-ocean';
   }
 
   private pickIcon(category: string, types: string[]): string {
@@ -543,12 +622,14 @@ export class PlaceCatalogService {
   }
 
   private pickImageUrl(record: Record<string, unknown>): string | undefined {
-    const directUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']);
+    // Priority 1: Look for direct photo_url from Google Places API
+    const directUrl = this.sanitizeImageUrl(this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail']));
 
     if (directUrl) {
       return directUrl;
     }
 
+    // Priority 2: Look in photo arrays (photo, photos, images)
     return this.pickMediaUrl(record['photo'])
       || this.pickMediaUrl(record['photos'])
       || this.pickMediaUrl(record['images']);
@@ -556,7 +637,7 @@ export class PlaceCatalogService {
 
   private pickMediaUrl(value: unknown): string | undefined {
     if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
+      return this.sanitizeImageUrl(value);
     }
 
     if (Array.isArray(value)) {
@@ -576,7 +657,9 @@ export class PlaceCatalogService {
     }
 
     const record = value as Record<string, unknown>;
-    const directUrl = this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail', 'url', 'src']);
+    const directUrl = this.sanitizeImageUrl(
+      this.pickString(record, ['photo_url', 'photoUrl', 'imageUrl', 'image', 'thumbnail', 'url', 'src'])
+    );
 
     if (directUrl) {
       return directUrl;
@@ -665,6 +748,52 @@ export class PlaceCatalogService {
 
   private truncate(value: string, limit: number): string {
     return value.length <= limit ? value : `${value.slice(0, limit - 3).trim()}...`;
+  }
+
+  private buildInlinePlaceholderImageUrl(details: { label: string; latitude?: number; longitude?: number }): string {
+    const title = this.escapeSvgText(details.label);
+    const subtitle = typeof details.latitude === 'number' && typeof details.longitude === 'number'
+      ? `${details.latitude.toFixed(4)}, ${details.longitude.toFixed(4)}`
+      : 'Image from JSON';
+    const accent = this.pickPlaceholderAccent(details.label);
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="title desc">
+        <title id="title">${title}</title>
+        <desc id="desc">${this.escapeSvgText(subtitle)}</desc>
+        <defs>
+          <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stop-color="#f8fafc" />
+            <stop offset="100%" stop-color="#e2e8f0" />
+          </linearGradient>
+        </defs>
+        <rect width="600" height="400" rx="28" fill="url(#bg)" />
+        <circle cx="510" cy="86" r="92" fill="${accent}" fill-opacity="0.14" />
+        <circle cx="110" cy="320" r="122" fill="${accent}" fill-opacity="0.08" />
+        <rect x="56" y="56" width="488" height="288" rx="24" fill="#ffffff" fill-opacity="0.72" stroke="#cbd5e1" stroke-width="2" />
+        <text x="82" y="158" fill="#0f172a" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700">${title}</text>
+        <text x="82" y="214" fill="#475569" font-family="Arial, Helvetica, sans-serif" font-size="20">${this.escapeSvgText(subtitle)}</text>
+        <text x="82" y="274" fill="#64748b" font-family="Arial, Helvetica, sans-serif" font-size="16">Image fallback generated locally</text>
+      </svg>
+    `.replace(/\s+/g, ' ').trim();
+
+    return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  }
+
+  private pickPlaceholderAccent(value: string): string {
+    const palette = ['#0f766e', '#1d4ed8', '#b45309', '#be185d', '#4338ca'];
+    const seed = this.slugify(value);
+    const index = Array.from(seed).reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0) % palette.length;
+
+    return palette[index];
+  }
+
+  private escapeSvgText(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 
   private toTitleCase(value: string): string {

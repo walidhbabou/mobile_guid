@@ -1,19 +1,13 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, ParamMap } from '@angular/router';
+import * as L from 'leaflet';
 import { Place } from '../data/tourism.data';
 import { RecommendedPlaceApi } from '../models/recommendation.model';
 import { AiPlaceService } from '../services/ai-place.service';
 import { CoreDataService } from '../services/core-data.service';
-import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
 import { UserLocationService } from '../services/user-location.service';
 import { PlaceCardMeta } from '../shared/place-card/place-card.component';
-
-declare global {
-  interface Window {
-    google?: any;
-  }
-}
 
 @Component({
   selector: 'app-tab2',
@@ -32,6 +26,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   selectedFilter = 'Tout';
   selectedPlace: Place | null = null;
   isSplitView = false;
+  isListMode = false;
   userLatitude?: number;
   userLongitude?: number;
   isLocating = false;
@@ -47,17 +42,14 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   recommendedPlaces: Array<{ place: Place; score: number; distanceKm?: number }> = [];
   isLoadingRecommendations = false;
   recommendationsErrorMessage = '';
-  private googleMap: any | null = null;
-  private googleInfoWindow: any | null = null;
-  private googleMarkers = new Map<string, any>();
-  private userMarker: any | null = null;
-  private directionsService: any | null = null;
-  private directionsRenderer: any | null = null;
+  private googleMap: L.Map | null = null;
+  private googleMarkers = new Map<string, L.CircleMarker>();
+  private userMarker: L.CircleMarker | null = null;
+  private routePolyline: L.Polyline | null = null;
   private viewInitialized = false;
   private requestedPlace: Place | null = null;
   private catalogPlaces: Place[] = [];
   private favoriteBackendIds = new Set<number>();
-  private metaCache = new Map<string, PlaceCardMeta>();
 
   filterState = {
     maxDistanceKm: 25,
@@ -65,18 +57,34 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     maxBudgetMad: 2000,
   };
 
+  isFiltersExpanded = false;
+
+  toggleFilters() {
+    this.isFiltersExpanded = !this.isFiltersExpanded;
+  }
+
+  toggleListMode() {
+    this.isListMode = !this.isListMode;
+  }
+
+  switchToMapView() {
+    this.isListMode = false;
+    this.queueMapResize();
+  }
+
+  getCardColorClass(index: number): string {
+    const palette = ['c-red', 'c-gold', 'c-olive', 'c-teal', 'c-burg'];
+    return palette[index % palette.length];
+  }
+
   handlePlaceImageError(place: Place) {
-    // Permet d'afficher la miniature de fallback quand l'image principale ne charge pas.
-    place.imageUrl = place.fallbackImageUrl && place.imageUrl !== place.fallbackImageUrl
-      ? place.fallbackImageUrl
-      : undefined;
+    place.imageUrl = undefined;
   }
 
   constructor(
     private route: ActivatedRoute,
     private placeCatalogService: PlaceCatalogService,
     private aiPlaceService: AiPlaceService,
-    private googleMapsLoaderService: GoogleMapsLoaderService,
     private ngZone: NgZone,
     private userLocationService: UserLocationService,
     private coreDataService: CoreDataService
@@ -110,13 +118,9 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy() {
     this.clearGoogleMarkers();
-    this.googleInfoWindow?.close();
     this.clearRenderedRoute();
-    this.userMarker?.setMap(null);
-
-    if (this.directionsRenderer) {
-      this.directionsRenderer.setMap(null);
-    }
+    this.userMarker?.remove();
+    this.googleMap?.remove();
   }
 
   get totalPlacesCount(): number {
@@ -188,10 +192,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       this.refreshRecommendations();
 
       if (this.googleMap) {
-        this.googleMap.panTo({
-          lat: this.userLatitude,
-          lng: this.userLongitude,
-        });
+        this.googleMap.panTo([this.userLatitude, this.userLongitude]);
 
         if ((this.googleMap.getZoom?.() ?? 0) < 12) {
           this.googleMap.setZoom(12);
@@ -215,56 +216,39 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     this.isLoadingRecommendations = true;
     this.recommendationsErrorMessage = '';
 
-    this.aiPlaceService.getRecommendations(this.userLatitude, this.userLongitude).subscribe({
-      next: (response) => {
-        const raw = Array.isArray(response?.recommendations) ? response.recommendations as RecommendedPlaceApi[] : [];
-        this.recommendedPlaces = raw.map((item: RecommendedPlaceApi) => ({
-          place: this.mapRecommendedPlaceToPlace(item.place),
-          score: item.score,
-          distanceKm: item.distanceKm,
-        }));
-      },
-      error: () => {
-        this.recommendedPlaces = [];
-        this.recommendationsErrorMessage = 'Impossible de charger les recommandations pour le moment.';
-      },
-      complete: () => {
-        this.isLoadingRecommendations = false;
-      },
-    });
+   
   }
 
   async searchInGoogleMaps() {
     const query = this.searchQuery.trim();
 
     if (!query) {
-      this.mapSearchMessage = 'Saisissez un lieu pour lancer la recherche Google Maps.';
+      this.mapSearchMessage = 'Saisissez un lieu pour lancer la recherche OpenStreetMap.';
       return;
     }
 
     this.isSearchingPlaces = true;
-    this.mapSearchMessage = 'Recherche Google Maps en cours...';
+    this.mapSearchMessage = 'Recherche OpenStreetMap en cours...';
 
     try {
       if (!this.googleMap) {
         await this.initializeGoogleMap();
       }
 
-      const google = await this.googleMapsLoaderService.load();
       await this.locateUser(false, false);
-      const match = await this.findPlaceWithGoogleMaps(google, query);
+      const match = await this.findPlaceWithGoogleMaps(query);
 
       if (!match) {
-        this.mapSearchMessage = 'Aucun lieu Google Maps n a ete trouve pour cette recherche.';
+        this.mapSearchMessage = 'Aucun lieu OpenStreetMap n a ete trouve pour cette recherche.';
         return;
       }
 
       this.requestedPlace = this.buildPlaceFromGoogleResult(match);
       this.selectedFilter = 'Tout';
       this.refreshPlaceCollection();
-      this.mapSearchMessage = `Lieu charge depuis Google Maps: ${this.requestedPlace.name}.`;
+      this.mapSearchMessage = `Lieu charge depuis OpenStreetMap: ${this.requestedPlace.name}.`;
     } catch {
-      this.mapSearchMessage = 'La recherche Google Maps est indisponible pour le moment.';
+      this.mapSearchMessage = 'La recherche OpenStreetMap est indisponible pour le moment.';
     } finally {
       this.isSearchingPlaces = false;
     }
@@ -321,14 +305,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getPlaceMeta(place: Place): PlaceCardMeta {
-    const cached = this.metaCache.get(place.id);
-    if (cached) {
-      return cached;
-    }
-
-    const meta = this.buildPlaceMeta(place);
-    this.metaCache.set(place.id, meta);
-    return meta;
+    return this.buildPlaceMeta(place);
   }
 
   private loadMapContent() {
@@ -340,7 +317,6 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
 
   private refreshPlaceCollection() {
     this.allPlaces = this.mergeRequestedPlace(this.catalogPlaces);
-    this.metaCache.clear();
     this.refreshFilterSource();
     this.selectRequestedPlaceIfAvailable();
   }
@@ -410,36 +386,26 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     this.isMapLoading = true;
 
     try {
-      const google = await this.googleMapsLoaderService.load();
-
       if (!this.googleMapElement?.nativeElement) {
         return;
       }
 
-      this.googleMap = new google.maps.Map(this.googleMapElement.nativeElement, {
-        center: { lat: 31.7917, lng: -7.0926 },
+      this.googleMap = L.map(this.googleMapElement.nativeElement, {
+        center: [31.7917, -7.0926],
         zoom: 6,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: false,
-        clickableIcons: false,
+        zoomControl: true,
       });
-      this.googleInfoWindow = new google.maps.InfoWindow();
-      this.directionsService = new google.maps.DirectionsService();
-      this.directionsRenderer = new google.maps.DirectionsRenderer({
-        map: this.googleMap,
-        suppressMarkers: true,
-        polylineOptions: {
-          strokeColor: '#2d7ff0',
-          strokeOpacity: 0.9,
-          strokeWeight: 5,
-        },
-      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(this.googleMap);
+
       this.mapErrorMessage = '';
       this.syncGoogleMap();
       this.queueMapResize();
     } catch {
-      this.mapErrorMessage = 'Google Maps ne s affiche pas. Ajoutez une cle API valide dans src/environments/environment.ts.';
+      this.mapErrorMessage = 'La carte OpenStreetMap ne s affiche pas pour le moment.';
     } finally {
       this.isMapLoading = false;
     }
@@ -455,38 +421,24 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const google = window.google;
-
-    if (!google?.maps) {
-      return;
-    }
-
     this.clearGoogleMarkers();
     this.updateUserMarker();
 
     const placesWithCoordinates = this.filteredPlaces.filter((place: Place) => this.hasCoordinates(place));
-    const bounds = new google.maps.LatLngBounds();
+    const bounds = L.latLngBounds([] as L.LatLngTuple[]);
 
     if (this.hasUserCoordinates()) {
-      bounds.extend({
-        lat: this.userLatitude as number,
-        lng: this.userLongitude as number,
-      });
+      bounds.extend([this.userLatitude as number, this.userLongitude as number]);
     }
 
     if (!placesWithCoordinates.length) {
       if (this.hasUserCoordinates()) {
-        this.googleMap.setCenter({
-          lat: this.userLatitude as number,
-          lng: this.userLongitude as number,
-        });
+        this.googleMap.setView([this.userLatitude as number, this.userLongitude as number], 13);
         this.googleMap.setZoom(13);
       } else {
-        this.googleMap.setCenter({ lat: 31.7917, lng: -7.0926 });
+        this.googleMap.setView([31.7917, -7.0926], 6);
         this.googleMap.setZoom(6);
       }
-
-      this.googleInfoWindow?.close();
 
       if (!this.selectedPlace || !this.hasCoordinates(this.selectedPlace)) {
         this.clearRenderedRoute();
@@ -496,28 +448,21 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     }
 
     placesWithCoordinates.forEach((place: Place) => {
-      const marker = new google.maps.Marker({
-        map: this.googleMap,
-        position: {
-          lat: place.latitude as number,
-          lng: place.longitude as number,
-        },
-        title: place.name,
-        icon: this.buildMarkerIcon(place, false),
-      });
+      const marker = L.circleMarker([place.latitude as number, place.longitude as number], this.buildMarkerIcon(place, false));
+      marker.addTo(this.googleMap as L.Map);
 
-      marker.addListener('click', () => {
+      marker.on('click', () => {
         this.ngZone.run(() => this.selectPlace(place, true));
       });
 
       this.googleMarkers.set(place.id, marker);
-      bounds.extend(marker.getPosition());
+      bounds.extend(marker.getLatLng());
     });
 
     if (this.selectedPlace && this.hasCoordinates(this.selectedPlace)) {
       this.focusMapOnPlace(this.selectedPlace);
     } else {
-      this.googleMap.fitBounds(bounds, 64);
+      this.googleMap.fitBounds(bounds.pad(0.2));
     }
 
     this.updateMarkerSelection();
@@ -531,23 +476,21 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     const heatColor = this.buildHeatColor(this.getPlaceMeta(place).popularity);
 
     return {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      scale: isActive ? 9 : 7,
+      radius: isActive ? 9 : 7,
       fillColor: isActive ? '#2d7ff0' : heatColor,
       fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 2,
+      color: '#ffffff',
+      weight: 2,
     };
   }
 
   private buildUserMarkerIcon() {
     return {
-      path: window.google.maps.SymbolPath.CIRCLE,
-      scale: 8,
+      radius: 8,
       fillColor: '#2563eb',
       fillOpacity: 1,
-      strokeColor: '#ffffff',
-      strokeWeight: 3,
+      color: '#ffffff',
+      weight: 3,
     };
   }
 
@@ -556,41 +499,33 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       const isActive = this.selectedPlace?.id === placeId;
       const place = this.filteredPlaces.find((item: Place) => item.id === placeId) || this.allPlaces.find((item: Place) => item.id === placeId);
       if (place) {
-        marker.setIcon(this.buildMarkerIcon(place, isActive));
+        marker.setStyle(this.buildMarkerIcon(place, isActive));
       }
-      marker.setZIndex(isActive ? 10 : 1);
+      marker.bringToFront();
     });
   }
 
   private updateUserMarker() {
-    if (!this.googleMap || !window.google?.maps) {
+    if (!this.googleMap) {
       return;
     }
 
     if (!this.hasUserCoordinates()) {
-      this.userMarker?.setMap(null);
+      this.userMarker?.remove();
       this.userMarker = null;
       return;
     }
 
-    const position = {
-      lat: this.userLatitude as number,
-      lng: this.userLongitude as number,
-    };
+    const position: L.LatLngTuple = [this.userLatitude as number, this.userLongitude as number];
 
     if (!this.userMarker) {
-      this.userMarker = new window.google.maps.Marker({
-        map: this.googleMap,
-        position,
-        title: 'Ma position',
-        icon: this.buildUserMarkerIcon(),
-        zIndex: 20,
-      });
+      this.userMarker = L.circleMarker(position, this.buildUserMarkerIcon()).addTo(this.googleMap);
+      this.userMarker.bindTooltip('Ma position', { direction: 'top', offset: [0, -6] });
       return;
     }
 
-    this.userMarker.setMap(this.googleMap);
-    this.userMarker.setPosition(position);
+    this.userMarker.setLatLng(position);
+    this.userMarker.setStyle(this.buildUserMarkerIcon());
   }
 
   private focusMapOnPlace(place: Place) {
@@ -598,10 +533,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    this.googleMap.panTo({
-      lat: place.latitude as number,
-      lng: place.longitude as number,
-    });
+    this.googleMap.panTo([place.latitude as number, place.longitude as number]);
 
     if ((this.googleMap.getZoom?.() ?? 0) < 13) {
       this.googleMap.setZoom(13);
@@ -718,27 +650,34 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private openInfoWindow(place: Place) {
-    if (!this.googleMap || !this.googleInfoWindow) {
+    if (!this.googleMap) {
       return;
     }
 
     const marker = this.googleMarkers.get(place.id);
 
     if (!marker) {
-      this.googleInfoWindow.close();
       return;
     }
 
-    this.googleInfoWindow.setContent(
-      `<div style="padding:8px 10px;max-width:220px;">
-        <strong>${this.escapeHtml(place.name)}</strong>
-        <div style="margin-top:4px;font-size:12px;color:#667085;">${this.escapeHtml(place.location)}</div>
-      </div>`
-    );
-    this.googleInfoWindow.open({
-      anchor: marker,
-      map: this.googleMap,
-    });
+    // Get the best available image for display in popup
+    const imageUrl = place.photo_url || (place.photo_urls && place.photo_urls.length > 0 ? place.photo_urls[0] : null) || place.imageUrl;
+    
+    // Build the popup content with image if available
+    let popupContent = `<div style="padding:0;max-width:280px;border-radius:8px;overflow:hidden;">`;
+    
+    if (imageUrl) {
+      popupContent += `<img src="${this.escapeHtml(imageUrl)}" style="width:100%;height:160px;object-fit:cover;display:block;" alt="${this.escapeHtml(place.name)}" onerror="this.style.display='none'"/>`;
+    }
+    
+    popupContent += `<div style="padding:12px 10px;">
+      <strong style="font-size:14px;">${this.escapeHtml(place.name)}</strong>
+      <div style="margin-top:4px;font-size:12px;color:#667085;">${this.escapeHtml(place.location)}</div>
+      ${place.category ? `<div style="margin-top:6px;font-size:11px;color:#9ca3af;"><span style="background:#f3f4f6;padding:2px 8px;border-radius:4px;">${this.escapeHtml(place.category)}</span></div>` : ''}
+    </div></div>`;
+
+    marker.bindPopup(popupContent);
+    marker.openPopup();
   }
 
   private async prepareRoute(place: Place) {
@@ -755,7 +694,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (this.hasUserCoordinates()) {
-      this.renderRoute(place);
+      await this.renderRoute(place);
       return;
     }
 
@@ -763,48 +702,57 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     this.clearRenderedRoute();
   }
 
-  private renderRoute(place: Place) {
-    if (!this.directionsService || !this.directionsRenderer || !this.hasCoordinates(place) || !this.hasUserCoordinates()) {
+  private async renderRoute(place: Place) {
+    if (!this.googleMap || !this.hasCoordinates(place) || !this.hasUserCoordinates()) {
       return;
     }
 
-    this.directionsService.route(
-      {
-        origin: {
-          lat: this.userLatitude as number,
-          lng: this.userLongitude as number,
-        },
-        destination: {
-          lat: place.latitude as number,
-          lng: place.longitude as number,
-        },
-        travelMode: window.google.maps.TravelMode.DRIVING,
-      },
-      (result: any, status: string) => {
-        this.ngZone.run(() => {
-          if (status === 'OK' && result) {
-            this.directionsRenderer?.setDirections(result);
+    const originLat = this.userLatitude as number;
+    const originLng = this.userLongitude as number;
+    const destinationLat = place.latitude as number;
+    const destinationLng = place.longitude as number;
 
-            const leg = result.routes?.[0]?.legs?.[0];
-            this.routeDistanceText = leg?.distance?.text || undefined;
-            this.routeDurationText = leg?.duration?.text || undefined;
+    const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destinationLng},${destinationLat}?overview=full&geometries=geojson`;
 
-            const distance = this.routeDistanceText ? ` (${this.routeDistanceText})` : '';
-            const duration = this.routeDurationText ? ` en ${this.routeDurationText}` : '';
+    try {
+      const response = await fetch(url);
+      const payload = await response.json();
+      const route = payload?.routes?.[0];
 
-            this.routeMessage = `Itineraire vers ${place.name}${distance}${duration}.`;
-            return;
-          }
-
-          this.clearRenderedRoute();
-          this.routeMessage = 'Impossible d afficher l itineraire sur la carte. Ouvrez Google Maps pour continuer.';
-        });
+      if (!route?.geometry?.coordinates?.length) {
+        throw new Error('No route geometry');
       }
-    );
+
+      const coordinates = route.geometry.coordinates as Array<[number, number]>;
+      const latLngs = coordinates.map((coordinate) => [coordinate[1], coordinate[0]] as L.LatLngTuple);
+
+      this.clearRenderedRoute();
+      this.routePolyline = L.polyline(latLngs, {
+        color: '#2d7ff0',
+        weight: 5,
+        opacity: 0.9,
+      }).addTo(this.googleMap);
+
+      this.routeDistanceText = `${(route.distance / 1000).toFixed(1)} km`;
+      const durationMinutes = Math.max(1, Math.round((route.duration || 0) / 60));
+      this.routeDurationText = `${durationMinutes} min`;
+
+      const distance = this.routeDistanceText ? ` (${this.routeDistanceText})` : '';
+      const duration = this.routeDurationText ? ` en ${this.routeDurationText}` : '';
+      this.routeMessage = `Itineraire vers ${place.name}${distance}${duration}.`;
+
+      if (this.routePolyline) {
+        this.googleMap.fitBounds(this.routePolyline.getBounds().pad(0.18));
+      }
+    } catch {
+      this.clearRenderedRoute();
+      this.routeMessage = 'Impossible d afficher l itineraire sur la carte. Ouvrez Google Maps pour continuer.';
+    }
   }
 
   private clearRenderedRoute() {
-    this.directionsRenderer?.set('directions', null);
+    this.routePolyline?.remove();
+    this.routePolyline = null;
     this.routeDistanceText = undefined;
     this.routeDurationText = undefined;
   }
@@ -846,25 +794,22 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private clearGoogleMarkers() {
-    this.googleMarkers.forEach((marker: any) => marker.setMap(null));
+    this.googleMarkers.forEach((marker: L.CircleMarker) => marker.remove());
     this.googleMarkers.clear();
   }
 
   private queueMapResize() {
-    if (!this.googleMap || !window.google?.maps?.event) {
+    if (!this.googleMap) {
       return;
     }
 
     window.setTimeout(() => {
-      window.google?.maps?.event?.trigger(this.googleMap, 'resize');
+      this.googleMap?.invalidateSize();
 
       if (this.selectedPlace) {
         this.focusMapOnPlace(this.selectedPlace);
       } else if (this.hasUserCoordinates()) {
-        this.googleMap.panTo({
-          lat: this.userLatitude as number,
-          lng: this.userLongitude as number,
-        });
+        this.googleMap?.panTo([this.userLatitude as number, this.userLongitude as number]);
       }
     }, 120);
   }
@@ -905,6 +850,9 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     const address = params.get('address')?.trim() || location;
     const category = params.get('category')?.trim() || 'Lieu';
     const googleMapsUrl = params.get('googleMapsUrl')?.trim() || undefined;
+    const imageUrlParam = params.get('imageUrl')?.trim() || undefined;
+    const photoUrl = params.get('photo_url')?.trim() || undefined;
+    const photoUrlsParam = params.get('photo_urls')?.trim();
     const latitude = this.readCoordinate(params.get('latitude'));
     const longitude = this.readCoordinate(params.get('longitude'));
 
@@ -912,8 +860,22 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       return null;
     }
 
+    // Parse photo_urls JSON array
+    let photoUrls: string[] | undefined;
+    if (photoUrlsParam) {
+      try {
+        photoUrls = JSON.parse(photoUrlsParam);
+        if (!Array.isArray(photoUrls)) {
+          photoUrls = undefined;
+        }
+      } catch {
+        photoUrls = undefined;
+      }
+    }
+
     const fallbackName = name || 'Destination';
     const fallbackId = placeId || this.slugify(`${fallbackName}-${location}`);
+    const imageUrl = imageUrlParam || photoUrl || (photoUrls && photoUrls.length > 0 ? photoUrls[0] : undefined);
 
     return {
       id: fallbackId,
@@ -934,6 +896,10 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       hours: 'Consultez Google Maps pour les horaires du jour',
       starsLabel: 'Nouveau',
       highlights: [location, category].filter((item: string) => item.trim().length > 0),
+      imageUrl,
+      fallbackImageUrl: undefined,
+      photo_url: photoUrl,
+      photo_urls: photoUrls,
       googleMapsUrl,
       latitude,
       longitude,
@@ -1028,51 +994,46 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       .replace(/'/g, '&#39;');
   }
 
-  private findPlaceWithGoogleMaps(google: any, query: string): Promise<any | null> {
-    if (!google?.maps?.places?.PlacesService) {
-      return Promise.resolve(null);
-    }
-
-    const placesService = new google.maps.places.PlacesService(this.googleMap || document.createElement('div'));
-    const request: Record<string, unknown> = {
-      query,
-      region: 'ma',
-    };
-
-    const mapBounds = this.googleMap?.getBounds?.();
-
-    if (mapBounds) {
-      request['bounds'] = mapBounds;
-    } else if (this.hasUserCoordinates()) {
-      request['location'] = new google.maps.LatLng(this.userLatitude as number, this.userLongitude as number);
-      request['radius'] = 25000;
-    }
-
-    return new Promise((resolve) => {
-      placesService.textSearch(request, (results: any[] | null, status: string) => {
-        const successStatus = google.maps.places.PlacesServiceStatus.OK;
-        resolve(status === successStatus && results?.length ? results[0] : null);
-      });
+  private async findPlaceWithGoogleMaps(query: string): Promise<any | null> {
+    const params = new URLSearchParams({
+      q: query,
+      format: 'jsonv2',
+      addressdetails: '1',
+      limit: '1',
+      countrycodes: 'ma',
     });
+
+    if (this.hasUserCoordinates()) {
+      params.set('lat', String(this.userLatitude));
+      params.set('lon', String(this.userLongitude));
+    }
+
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+      headers: {
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await response.json() as any[];
+    return payload.length ? payload[0] : null;
   }
 
   private buildPlaceFromGoogleResult(result: any): Place {
-    const latitude = typeof result?.geometry?.location?.lat === 'function'
-      ? result.geometry.location.lat()
-      : undefined;
-    const longitude = typeof result?.geometry?.location?.lng === 'function'
-      ? result.geometry.location.lng()
-      : undefined;
-    const name = typeof result?.name === 'string' && result.name.trim().length > 0
-      ? result.name.trim()
+    const latitude = this.readCoordinate(typeof result?.lat === 'string' ? result.lat : String(result?.lat ?? ''));
+    const longitude = this.readCoordinate(typeof result?.lon === 'string' ? result.lon : String(result?.lon ?? ''));
+    const name = typeof result?.display_name === 'string' && result.display_name.trim().length > 0
+      ? result.display_name.split(',')[0].trim()
       : 'Destination';
-    const address = typeof result?.formatted_address === 'string' && result.formatted_address.trim().length > 0
-      ? result.formatted_address.trim()
+    const address = typeof result?.display_name === 'string' && result.display_name.trim().length > 0
+      ? result.display_name.trim()
       : 'Maroc';
     const location = this.extractLocationFromAddress(address);
-    const category = this.buildCategoryFromTypes(Array.isArray(result?.types) ? result.types : []);
-    const rating = typeof result?.rating === 'number' ? result.rating : 0;
-    const photoUrl = this.resolveGooglePlacePhoto(result);
+    const category = this.toTitleCase((result?.type || 'lieu').replace(/[_-]+/g, ' '));
+    const rating = 0;
     const fallbackImageUrl = this.placeCatalogService.buildFallbackImageUrl({
       name,
       address,
@@ -1081,34 +1042,32 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     });
 
     return {
-      id: typeof result?.place_id === 'string' && result.place_id.trim().length > 0
-        ? result.place_id.trim()
+      id: result?.place_id
+        ? String(result.place_id).trim()
         : this.slugify(`${name}-${location}`),
-      externalPlaceId: typeof result?.place_id === 'string' ? result.place_id.trim() : undefined,
+      externalPlaceId: result?.place_id ? String(result.place_id).trim() : undefined,
       name,
       location,
       rating,
       reviewsLabel: location,
-      reviewsCount: typeof result?.user_ratings_total === 'number' ? result.user_ratings_total : 0,
+      reviewsCount: 0,
       category,
       badge: location,
       theme: this.pickTheme(category, location, name),
-      icon: this.pickIcon(category, Array.isArray(result?.types) ? result.types : []),
-      spotlight: `Destination Google Maps preparee pour ${name}.`,
+      icon: this.pickIcon(category, [result?.type || '']),
+      spotlight: `Destination OpenStreetMap preparee pour ${name}.`,
       shortDescription: this.truncate(address, 110),
-      longDescription: `Destination Google Maps preparee pour ${name}. Utilisez la carte pour voir l itineraire et les informations locales.`,
+      longDescription: `Destination OpenStreetMap preparee pour ${name}. Utilisez la carte pour voir l itineraire et les informations locales.`,
       address,
       hours: 'Consultez Google Maps pour les horaires du jour',
       starsLabel: this.buildStarsLabel(rating),
-      highlights: this.buildHighlights(Array.isArray(result?.types) ? result.types : [], location, address),
-      imageUrl: photoUrl || fallbackImageUrl,
+      highlights: this.buildHighlights([result?.type || ''], location, address),
+      imageUrl: fallbackImageUrl,
       fallbackImageUrl,
       googleMapsUrl: this.buildGoogleMapsUrl(name, address, latitude, longitude, result?.place_id),
       latitude,
       longitude,
-      types: Array.isArray(result?.types)
-        ? result.types.filter((type: unknown): type is string => typeof type === 'string' && type.trim().length > 0)
-        : [],
+      types: [result?.type || ''].filter((type: string) => type.trim().length > 0),
       city: location,
     };
   }
@@ -1152,23 +1111,6 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
       longitude: item?.longitude,
       city: location,
     };
-  }
-
-  private resolveGooglePlacePhoto(result: any): string | undefined {
-    const firstPhoto = Array.isArray(result?.photos) ? result.photos[0] : null;
-
-    if (!firstPhoto || typeof firstPhoto.getUrl !== 'function') {
-      return undefined;
-    }
-
-    try {
-      return firstPhoto.getUrl({
-        maxWidth: 1200,
-        maxHeight: 800,
-      });
-    } catch {
-      return undefined;
-    }
   }
 
   private buildGoogleMapsUrl(

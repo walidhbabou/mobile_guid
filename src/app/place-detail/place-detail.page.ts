@@ -1,18 +1,12 @@
 import { Location } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import * as L from 'leaflet';
 import { Place, Review } from '../data/tourism.data';
 import { CoreDataService } from '../services/core-data.service';
+import { FavoritesService } from '../services/favorites.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
-
-interface PlaceEditForm {
-  name: string;
-  location: string;
-  category: string;
-  address: string;
-  description: string;
-  imageUrl: string;
-}
+import { parsePhotoUrls } from '../shared/utils/photo-urls.util';
 
 @Component({
   selector: 'app-place-detail',
@@ -20,32 +14,39 @@ interface PlaceEditForm {
   styleUrls: ['./place-detail.page.scss'],
   standalone: false,
 })
-export class PlaceDetailPage implements OnInit, OnDestroy {
+export class PlaceDetailPage implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('placeMap', { static: false }) private placeMapElement?: ElementRef<HTMLDivElement>;
+
   place: Place | null = null;
   reviews: Review[] = [];
+  photoGallery: string[] = [];
   audioWave: number[] = [];
   isFavorite = false;
-  isFavoriteLoading = false;
   favoriteMessage = '';
   isAudioPlaying = false;
   audioStatusMessage = '';
-  isEditing = false;
-  isSaving = false;
-  saveMessage = '';
   reviewRating = 5;
   reviewComment = '';
   reviewMessage = '';
   isSubmittingReview = false;
-  editForm: PlaceEditForm = this.buildEmptyEditForm();
+  isMapLoading = false;
+  mapErrorMessage = '';
   private lastTrackedPlaceId: string | null = null;
+  private failedDetailImageUrls = new Set<string>();
+  readonly FALLBACK_IMAGE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="rgba(100,116,139,0.25)" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>')}`;
   private activeUtterance: SpeechSynthesisUtterance | null = null;
+  private detailMap: L.Map | null = null;
+  private detailMarker: L.Marker | null = null;
+  private viewInitialized = false;
 
   constructor(
     private route: ActivatedRoute,
     private location: Location,
     private router: Router,
     private coreDataService: CoreDataService,
-    private placeCatalogService: PlaceCatalogService
+    private favoritesService: FavoritesService,
+    private placeCatalogService: PlaceCatalogService,
+    private ngZone: NgZone
   ) {}
 
   ngOnInit() {
@@ -54,8 +55,15 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
     });
   }
 
+  ngAfterViewInit() {
+    this.viewInitialized = true;
+    void this.initializeDetailMap();
+  }
+
   ngOnDestroy() {
     this.stopAudioGuide(true);
+    this.detailMarker?.remove();
+    this.detailMap?.remove();
   }
 
   goBack() {
@@ -68,26 +76,15 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
   }
 
   toggleFavorite() {
-    if (!this.place || this.isFavoriteLoading) {
+    if (!this.place) {
       return;
     }
 
-    this.favoriteMessage = '';
-    this.isFavoriteLoading = true;
-
-    this.coreDataService.toggleFavorite(this.place).subscribe({
-      next: (isFavorite: boolean) => {
-        this.isFavorite = isFavorite;
-        this.favoriteMessage = isFavorite
-          ? 'Lieu ajoute a vos favoris.'
-          : 'Lieu retire de vos favoris.';
-        this.isFavoriteLoading = false;
-      },
-      error: () => {
-        this.favoriteMessage = 'Ce lieu ne peut pas encore etre ajoute aux favoris.';
-        this.isFavoriteLoading = false;
-      },
-    });
+    this.favoritesService.toggle(this.place);
+    this.isFavorite = this.favoritesService.isFavorite(this.place.id);
+    this.favoriteMessage = this.isFavorite
+      ? 'Lieu ajoute a vos favoris.'
+      : 'Lieu retire de vos favoris.';
   }
 
   toggleAudioGuide() {
@@ -147,56 +144,6 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
     window.speechSynthesis.speak(utterance);
   }
 
-  startEditing() {
-    if (!this.place) {
-      return;
-    }
-
-    this.isEditing = true;
-    this.saveMessage = '';
-    this.resetEditForm(this.place);
-  }
-
-  cancelEditing() {
-    this.isEditing = false;
-    this.saveMessage = '';
-
-    if (this.place) {
-      this.resetEditForm(this.place);
-    }
-  }
-
-  savePlaceChanges() {
-    if (!this.place || this.isSaving) {
-      return;
-    }
-
-    const changes = this.buildEditedPlace();
-
-    if (!changes.name || !changes.address || !changes.longDescription) {
-      this.saveMessage = 'Le nom, la description et l adresse sont obligatoires.';
-      return;
-    }
-
-    this.isSaving = true;
-    this.saveMessage = '';
-
-    this.placeCatalogService.updatePlace(this.place, changes).subscribe((updatedPlace: Place | null) => {
-      this.isSaving = false;
-
-      if (!updatedPlace) {
-        this.saveMessage = 'La sauvegarde n a pas abouti. Verifiez que les services de l application sont disponibles.';
-        return;
-      }
-
-      this.place = updatedPlace;
-      this.audioWave = this.placeCatalogService.buildAudioWave(updatedPlace);
-      this.resetEditForm(updatedPlace);
-      this.isEditing = false;
-      this.saveMessage = 'Les informations du lieu ont ete mises a jour.';
-    });
-  }
-
   setReviewRating(rating: number) {
     this.reviewRating = rating;
   }
@@ -238,18 +185,71 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
     return this.reviews.some((review: Review) => review.isOwnReview);
   }
 
-  handlePlaceImageError() {
-    if (!this.place) {
+  getDetailImageSrc(place: Place): string {
+    const seen = new Set<string>();
+    const candidates: string[] = [];
+
+    const push = (url?: string) => {
+      const trimmed = url?.trim();
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        candidates.push(trimmed);
+      }
+    };
+
+    push(place.imageUrl);
+    push(place.photo_url);
+    for (const url of parsePhotoUrls(place.photo_urls)) push(url);
+    push(place.fallbackImageUrl);
+
+    return candidates.find(url => !this.failedDetailImageUrls.has(url)) ?? this.FALLBACK_IMAGE;
+  }
+
+  handlePlaceImageError(event: Event) {
+    const img = event?.target as HTMLImageElement | undefined;
+    const failedUrl = img?.currentSrc || img?.src;
+
+    if (!failedUrl || failedUrl.startsWith('data:')) {
       return;
     }
 
-    this.place.imageUrl = this.place.fallbackImageUrl && this.place.imageUrl !== this.place.fallbackImageUrl
-      ? this.place.fallbackImageUrl
-      : undefined;
+    this.failedDetailImageUrls.add(failedUrl);
+
+    if (this.place && img) {
+      const nextSrc = this.getDetailImageSrc(this.place);
+      if (nextSrc !== failedUrl) {
+        img.src = nextSrc;
+      }
+    }
   }
 
-  canEditCurrentPlace(place: Place): boolean {
-    return !!((place.externalPlaceId || '').trim() || (place.backendId && place.id.trim()));
+  handleGalleryImageError(event: Event) {
+    const img = event.target as HTMLImageElement;
+    const item = img?.closest('.photo-gallery__item') as HTMLElement | null;
+    if (item) {
+      item.style.display = 'none';
+    }
+  }
+
+  private buildPhotoGallery(place: Place | null): string[] {
+    if (!place) return [];
+    const seen = new Set<string>();
+    const photos: string[] = [];
+    const push = (url?: string) => {
+      const trimmed = url?.trim();
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        photos.push(trimmed);
+      }
+    };
+    push(place.photo_url);
+    for (const url of parsePhotoUrls(place.photo_urls)) push(url);
+    if (!place.photo_url && !place.photo_urls?.length) push(place.imageUrl);
+    return photos;
+  }
+
+  hasCoordinates(place: Place | null): boolean {
+    return !!place && typeof place.latitude === 'number' && typeof place.longitude === 'number';
   }
 
   getAudioDurationLabel(place: Place): string {
@@ -300,8 +300,9 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
     this.placeCatalogService.getPlaceById(placeId).subscribe({
       next: (place: Place | null) => {
         this.place = place;
+        this.photoGallery = this.buildPhotoGallery(place);
         this.audioWave = place ? this.placeCatalogService.buildAudioWave(place) : [];
-        this.editForm = place ? this.buildEditForm(place) : this.buildEmptyEditForm();
+        void this.initializeDetailMap();
 
         if (place) {
           this.placeCatalogService.trackPlaceVisit(place.id);
@@ -320,24 +321,23 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
   private resetViewState() {
     this.place = null;
     this.reviews = [];
+    this.photoGallery = [];
+    this.failedDetailImageUrls.clear();
     this.audioWave = [];
     this.isFavorite = false;
     this.favoriteMessage = '';
-    this.isEditing = false;
-    this.isSaving = false;
-    this.saveMessage = '';
     this.reviewRating = 5;
     this.reviewComment = '';
     this.reviewMessage = '';
     this.isSubmittingReview = false;
     this.audioStatusMessage = '';
-    this.editForm = this.buildEmptyEditForm();
+    this.isMapLoading = false;
+    this.mapErrorMessage = '';
+    this.clearDetailMarker();
   }
 
   private loadFavoriteState(place: Place) {
-    this.coreDataService.isFavoritePlace(place.backendId).subscribe((isFavorite: boolean) => {
-      this.isFavorite = isFavorite;
-    });
+    this.isFavorite = this.favoritesService.isFavorite(place.id);
   }
 
   private loadReviews(place: Place) {
@@ -425,48 +425,77 @@ export class PlaceDetailPage implements OnInit, OnDestroy {
       .join(' ');
   }
 
-  private buildEditedPlace(): Partial<Place> {
-    const normalizedImageUrl = this.editForm.imageUrl.trim();
-
-    return {
-      name: this.editForm.name.trim(),
-      location: this.editForm.location.trim(),
-      category: this.editForm.category.trim(),
-      address: this.editForm.address.trim(),
-      longDescription: this.editForm.description.trim(),
-      imageUrl: normalizedImageUrl || this.place?.fallbackImageUrl,
-    };
-  }
-
-  private resetEditForm(place: Place) {
-    this.editForm = this.buildEditForm(place);
-  }
-
-  private buildEditForm(place: Place): PlaceEditForm {
-    return {
-      name: place.name,
-      location: place.location,
-      category: place.category,
-      address: place.address,
-      description: place.longDescription,
-      imageUrl: place.imageUrl && place.imageUrl !== place.fallbackImageUrl ? place.imageUrl : '',
-    };
-  }
-
-  private buildEmptyEditForm(): PlaceEditForm {
-    return {
-      name: '',
-      location: '',
-      category: '',
-      address: '',
-      description: '',
-      imageUrl: '',
-    };
-  }
-
   private resolveErrorMessage(error: unknown, fallback: string): string {
     const apiError = error as { error?: string; message?: string };
 
     return apiError?.error || apiError?.message || fallback;
+  }
+
+  private async initializeDetailMap() {
+    if (!this.viewInitialized || !this.placeMapElement?.nativeElement) {
+      return;
+    }
+
+    if (!this.detailMap) {
+      this.isMapLoading = true;
+
+      try {
+        const mapElement = this.placeMapElement.nativeElement;
+
+        this.ngZone.runOutsideAngular(() => {
+          this.detailMap = L.map(mapElement, {
+            center: [31.7917, -7.0926],
+            zoom: 6,
+            zoomControl: true,
+          });
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors',
+          }).addTo(this.detailMap as L.Map);
+        });
+
+        this.mapErrorMessage = '';
+      } catch {
+        this.mapErrorMessage = 'La carte Leaflet ne peut pas etre chargee pour le moment.';
+      } finally {
+        this.isMapLoading = false;
+      }
+    }
+
+    this.syncDetailMap();
+
+    window.setTimeout(() => {
+      this.detailMap?.invalidateSize();
+      this.syncDetailMap();
+    }, 120);
+  }
+
+  private syncDetailMap() {
+    if (!this.detailMap) {
+      return;
+    }
+
+    this.clearDetailMarker();
+
+    if (!this.hasCoordinates(this.place)) {
+      this.detailMap.setView([31.7917, -7.0926], 6);
+      return;
+    }
+
+    const latitude = this.place?.latitude as number;
+    const longitude = this.place?.longitude as number;
+
+    this.detailMarker = L.marker([latitude, longitude])
+      .addTo(this.detailMap)
+      .bindPopup(`<strong>${this.place?.name ?? 'Lieu'}</strong><br>${this.place?.location ?? ''}`);
+
+    this.detailMap.setView([latitude, longitude], 14);
+    this.detailMarker.openPopup();
+  }
+
+  private clearDetailMarker() {
+    this.detailMarker?.remove();
+    this.detailMarker = null;
   }
 }

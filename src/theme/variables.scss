@@ -11,11 +11,11 @@
   --ion-color-secondary-shade: #659ee0;
   --ion-color-secondary-tint: #82bcff;
 
-  --ion-color-success: #5aa5e8;
-  --ion-color-success-rgb: 90, 165, 232;
+  --ion-color-success: #4aae80;
+  --ion-color-success-rgb: 74, 174, 128;
   --ion-color-success-contrast: #ffffff;
-  --ion-color-success-shade: #4f91cc;
-  --ion-color-success-tint: #6badeb;
+  --ion-color-success-shade: #3f9870;
+  --ion-color-success-tint: #5db98d;
 
   --ion-background-color: #eef5ff;
   --ion-text-color: #15304f;
@@ -25,17 +25,35 @@
   --app-font-body: "Manrope", sans-serif;
   --app-page-bg: #eef5ff;
   --app-page-gradient:
-    radial-gradient(circle at 14% 12%, rgba(255, 214, 153, 0.24), transparent 22%),
-    radial-gradient(circle at 86% 14%, rgba(122, 189, 255, 0.44), transparent 30%),
-    radial-gradient(circle at 50% 100%, rgba(136, 189, 255, 0.2), transparent 34%),
-    linear-gradient(180deg, #fbfdff 0%, #edf5ff 52%, #e7f1ff 100%);
-  --app-surface: rgba(255, 255, 255, 0.94);
+    radial-gradient(circle at 12% 10%, rgba(255, 214, 153, 0.22), transparent 20%),
+    radial-gradient(circle at 88% 12%, rgba(122, 189, 255, 0.40), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(136, 189, 255, 0.18), transparent 30%),
+    linear-gradient(180deg, #fafcff 0%, #eef5ff 50%, #e6f0ff 100%);
+  --app-surface: rgba(255, 255, 255, 0.96);
   --app-surface-strong: #ffffff;
-  --app-border: rgba(93, 126, 170, 0.18);
+  --app-border: rgba(93, 126, 170, 0.16);
   --app-text-muted: #5f7698;
-  --app-shadow-soft: 0 26px 64px rgba(36, 74, 123, 0.16);
-  --app-shadow-card: 0 18px 38px rgba(46, 83, 132, 0.14);
-  --app-shadow-strong: 0 26px 56px rgba(32, 70, 117, 0.18);
+  --app-shadow-soft: 0 24px 56px rgba(36, 74, 123, 0.14);
+  --app-shadow-card: 0 16px 34px rgba(46, 83, 132, 0.12);
+  --app-shadow-strong: 0 24px 50px rgba(32, 70, 117, 0.16);
   --app-accent-warm: #f3b55d;
   --app-accent-warm-rgb: 243, 181, 93;
+  --app-radius-card: 28px;
+  --app-radius-lg: 22px;
+
+  --app-color-blue-sky: #87CEEB;
+  --app-color-blue-light: #4A90E2;
+  --app-color-blue-dark: #2E7FD4;
+  --app-color-blue-ocean: #1B4D8C;
+  --app-color-teal: #2ECAB8;
+
+  /* Home editorial theme */
+  --blue-hero-dark: #0C2D6B;
+  --blue-hero-mid: #1A5DB5;
+  --blue-accent: #2563EB;
+  --blue-nav-active: #1D4ED8;
+  --bg-light: #F8FAFF;
+  --text-dark: #0F172A;
+  --text-muted: #64748B;
+  --border-light: #E2E8F0;
 }

@@ -105,6 +105,10 @@ export class SignupPage implements OnInit {
     this.showConfirmPassword = !this.showConfirmPassword;
   }
 
+  loginWithGoogle() {
+    this.showToast('La connexion OAuth sera disponible très bientôt.', 'primary');
+  }
+
   goToLogin() {
     void this.router.navigateByUrl('/auth/login');
   }

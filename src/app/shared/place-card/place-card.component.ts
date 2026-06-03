@@ -1,5 +1,9 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { RouterModule } from '@angular/router';
+import { IonicModule } from '@ionic/angular';
 import { Place } from '../../data/tourism.data';
+import { parsePhotoUrls } from '../utils/photo-urls.util';
 
 export interface PlaceCardMeta {
   tags: string[];
@@ -12,9 +16,10 @@ export interface PlaceCardMeta {
   selector: 'app-place-card',
   templateUrl: './place-card.component.html',
   styleUrls: ['./place-card.component.scss'],
-  standalone: false,
+  standalone: true,
+  imports: [CommonModule, IonicModule, RouterModule],
 })
-export class PlaceCardComponent {
+export class PlaceCardComponent implements OnChanges {
   @Input() place!: Place;
   @Input() distanceKm?: number;
   @Input() selected = false;
@@ -25,6 +30,19 @@ export class PlaceCardComponent {
   @Output() toggleFavorite = new EventEmitter<Place>();
   @Output() viewOnMap = new EventEmitter<Place>();
   @Output() openRoute = new EventEmitter<Place>();
+
+  readonly FALLBACK_IMAGE = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="rgba(255,255,255,0.18)" d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-1.1 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>')}`;
+  private failedImageUrls = new Set<string>();
+  imageLoaded = false;
+
+  constructor() {}
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['place']) {
+      this.imageLoaded = false;
+      this.failedImageUrls.clear();
+    }
+  }
 
   onSelect() {
     this.selectPlace.emit(this.place);
@@ -45,10 +63,25 @@ export class PlaceCardComponent {
     this.openRoute.emit(this.place);
   }
 
-  handleImageError() {
-    this.place.imageUrl = this.place.fallbackImageUrl && this.place.imageUrl !== this.place.fallbackImageUrl
-      ? this.place.fallbackImageUrl
-      : undefined;
+  handleImageError(event?: Event) {
+    const img = event?.target as HTMLImageElement | undefined;
+    const failedUrl = img?.currentSrc || img?.src;
+
+    if (!failedUrl || failedUrl.startsWith('data:')) {
+      return;
+    }
+
+    this.imageLoaded = false;
+    this.failedImageUrls.add(failedUrl);
+
+    const nextSrc = this.getImageSrc();
+    if (img && nextSrc !== failedUrl) {
+      img.src = nextSrc;
+    }
+  }
+
+  onImageLoad() {
+    this.imageLoaded = true;
   }
 
   get heatColor(): string {
@@ -68,6 +101,26 @@ export class PlaceCardComponent {
     }
     const percentage = Math.round(Math.max(0, Math.min(1, value)) * 100);
     return `${percentage}%`;
+  }
+
+  getImageSrc(): string {
+    const seen = new Set<string>();
+    const candidates: string[] = [];
+
+    const push = (url?: string) => {
+      const trimmed = url?.trim();
+      if (trimmed && !seen.has(trimmed)) {
+        seen.add(trimmed);
+        candidates.push(trimmed);
+      }
+    };
+
+    push(this.place.imageUrl);
+    push(this.place.photo_url);
+    for (const url of parsePhotoUrls(this.place.photo_urls)) push(url);
+    push(this.place.fallbackImageUrl);
+
+    return candidates.find(url => !this.failedImageUrls.has(url)) ?? this.FALLBACK_IMAGE;
   }
 }
 

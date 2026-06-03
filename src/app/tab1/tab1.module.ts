@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Tab1Page } from './tab1.page';
 import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
+import { PlaceCardComponent } from '../shared/place-card/place-card.component';
 
 import { Tab1PageRoutingModule } from './tab1-routing.module';
 
@@ -13,6 +14,7 @@ import { Tab1PageRoutingModule } from './tab1-routing.module';
     CommonModule,
     FormsModule,
     ExploreContainerComponentModule,
+    PlaceCardComponent,
     Tab1PageRoutingModule
   ],
   declarations: [Tab1Page]

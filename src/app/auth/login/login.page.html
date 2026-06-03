@@ -1,77 +1,113 @@
-<ion-content [fullscreen]="true" class="simple-auth-screen login-screen">
-  <div class="simple-auth">
-    <section class="brand-block">
-      <div class="brand-mark">
-        <img src="assets/logo.jpg" alt="Atlas Guide" class="brand-mark__image" />
+<ion-content [fullscreen]="true" class="auth-screen">
+  <div class="auth-root">
+
+    <!-- ── Header bleu ────────────────────────────── -->
+    <div class="auth-header">
+      <div class="geo-lines" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--a" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--b" aria-hidden="true"></div>
+      <div class="geo-dot geo-dot--c" aria-hidden="true"></div>
+
+      <div class="header-inner">
+        <!-- Logo animé -->
+        <div class="logo-wrap">
+          <div class="logo-ring"></div>
+          <img src="assets/logo.jpg" alt="Atlas Guide" class="logo-img" />
+        </div>
+
+        <span class="header-badge">ATLAS GUIDE</span>
+        <h1 class="header-title">Bienvenue<br>à l'aventure</h1>
+        <p class="header-sub">Explorez le Maroc intelligemment</p>
       </div>
+    </div>
 
-      <p>Explorez le Maroc intelligemment</p>
-    </section>
+    <!-- ── Corps beige ────────────────────────────── -->
+    <div class="auth-body">
 
-    <section class="auth-panel">
-      <div class="auth-panel__header">
-        <h2>Connexion</h2>
-        <p>Retrouvez vos favoris et vos parcours en quelques secondes.</p>
+      <!-- Toggle Connexion / Inscription -->
+      <div class="auth-tabs">
+        <button type="button" class="tab-btn tab-btn--active">Connexion</button>
+        <button type="button" class="tab-btn" (click)="goToSignup()">Inscription</button>
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="login()" class="auth-form">
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="person-outline" aria-hidden="true"></ion-icon>
+
+        <!-- Email -->
+        <label class="field anim-field" style="--i:0">
+          <div class="field__wrap">
+            <ion-icon name="mail-outline" class="field__icon"></ion-icon>
             <ion-input
               formControlName="identifier"
               type="text"
               autocomplete="username"
               autocapitalize="off"
               spellcheck="false"
-              placeholder="Ibendo"
+              placeholder="Identifiant ou e-mail"
             ></ion-input>
           </div>
-          <small
-            class="error-text"
-            *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched"
-          >
+          <small class="field__error"
+            *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched">
             Entrez votre e-mail ou votre identifiant.
           </small>
         </label>
 
-        <label class="field">
-          <div class="field__shell">
-            <ion-icon name="lock-closed-outline" aria-hidden="true"></ion-icon>
+        <!-- Mot de passe -->
+        <label class="field anim-field" style="--i:1">
+          <div class="field__wrap">
+            <ion-icon name="lock-closed-outline" class="field__icon"></ion-icon>
             <ion-input
               formControlName="password"
               [type]="showPassword ? 'text' : 'password'"
               autocomplete="current-password"
               placeholder="Mot de passe"
             ></ion-input>
-            <button type="button" class="icon-button" (click)="togglePasswordVisibility()">
+            <button type="button" class="field__eye" (click)="togglePasswordVisibility()">
               <ion-icon [name]="showPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
             </button>
           </div>
-          <small
-            class="error-text"
-            *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
-          >
-            Utilisez au moins 4 caracteres.
+          <small class="field__error"
+            *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+            Utilisez au moins 4 caractères.
           </small>
         </label>
 
-        <button type="button" class="text-link panel-link" (click)="goToForgotPassword()">
-          Mot de passe oublie ?
+        <!-- Lien mot de passe oublié -->
+        <button type="button" class="forgot-btn anim-field" style="--i:2" (click)="goToForgotPassword()">
+          Mot de passe oublié ?
         </button>
 
-        <ion-button type="submit" expand="block" class="primary-cta" [disabled]="isLoading">
+        <!-- Bouton principal -->
+        <ion-button type="submit" expand="block" class="cta-btn anim-field" style="--i:3" [disabled]="isLoading">
           <ion-spinner *ngIf="isLoading" name="crescent"></ion-spinner>
-          <span *ngIf="!isLoading">Se connecter</span>
+          <span *ngIf="!isLoading">Se connecter &nbsp;→</span>
         </ion-button>
+
       </form>
 
-      <p class="auth-footer">
-        Pas encore de compte ?
-        <button type="button" class="text-link strong-link" (click)="goToSignup()">
-          Creer un compte
+      <!-- Séparateur -->
+      <div class="divider anim-field" style="--i:4">
+        <span class="divider__line"></span>
+        <span class="divider__label">ou continuer avec</span>
+        <span class="divider__line"></span>
+      </div>
+
+      <!-- Boutons OAuth -->
+      <div class="oauth-row anim-field" style="--i:5">
+        <button type="button" class="oauth-btn" (click)="loginWithGoogle()">
+          <ion-icon name="logo-google"></ion-icon>
+          <span>Google</span>
         </button>
+        <button type="button" class="oauth-btn" (click)="loginWithGoogle()">
+          <ion-icon name="logo-apple"></ion-icon>
+          <span>Apple</span>
+        </button>
+      </div>
+
+      <p class="auth-hint anim-field" style="--i:6">
+        Pas encore de compte ?
+        <button type="button" class="auth-hint__link" (click)="goToSignup()">S'inscrire</button>
       </p>
-    </section>
+
+    </div>
   </div>
 </ion-content>

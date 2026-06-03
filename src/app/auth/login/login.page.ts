@@ -80,7 +80,7 @@ export class LoginPage implements OnInit {
   }
 
   goToForgotPassword() {
-    this.showToast('Recuperation du mot de passe bientot disponible.', 'medium');
+    void this.router.navigateByUrl('/auth/forgot-password');
   }
 
   goToSignup() {

@@ -10,7 +10,7 @@ export const environment = {
   // Update this LAN IP if your machine address changes.
   nativeApiGatewayUrl: 'http://192.168.1.33:8081',
   nativeAuthServiceUrl: 'http://192.168.1.33:8081',
-  googleMapsApiKey: 'AIzaSyDyUQokHyUmfa9Ni-PZr7VvKanZdY-1hOw'
+  googleMapsApiKey: ''
 };
 
 /*

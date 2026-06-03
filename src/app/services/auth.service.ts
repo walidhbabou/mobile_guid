@@ -13,6 +13,10 @@ import {
   UpdatePasswordRequest,
   UpdateUserProfileRequest,
   UserProfileResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
 } from '../models/auth.model';
 
 @Injectable({
@@ -38,7 +42,7 @@ export class AuthService {
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
     return this.apiService.login(credentials).pipe(
-      tap(response => {
+      tap((response: AuthResponse) => {
         const accessToken = response.accessToken || response.token || response.jwt;
         const refreshToken = response.refreshToken;
 
@@ -68,6 +72,14 @@ export class AuthService {
 
   updateCurrentUserPassword(payload: UpdatePasswordRequest): Observable<{ message: string }> {
     return this.apiService.updateCurrentUserPassword(payload);
+  }
+
+  forgotPassword(payload: ForgotPasswordRequest): Observable<ForgotPasswordResponse> {
+    return this.apiService.forgotPassword(payload);
+  }
+
+  resetPassword(payload: ResetPasswordRequest): Observable<ResetPasswordResponse> {
+    return this.apiService.resetPassword(payload);
   }
 
   storeUserProfile(email: string, userName: string, userId?: number | null, phone?: string | null): void {

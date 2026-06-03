@@ -1,195 +1,241 @@
-<ion-content [fullscreen]="true" class="map-screen">
-  <div class="app-screen">
-    <section class="map-topbar">
-      <div class="map-topbar__title">
-        <span class="map-topbar__icon">
-          <ion-icon name="navigate-outline"></ion-icon>
-        </span>
-        <div>
-          <p class="map-topbar__location">{{ primaryLocation }}</p>
-          <h1>Explorer</h1>
-        </div>
-      </div>
+<ion-content [fullscreen]="true" [scrollY]="false" class="explore-screen">
+  <div class="page-wrap">
 
-      <div class="topbar-actions">
-        <button type="button" class="icon-bubble" (click)="toggleSplitView()" [class.active]="isSplitView">
-          <ion-icon name="grid-outline"></ion-icon>
+    <!-- ── Top Bar ──────────────────────────────────── -->
+    <div class="topbar">
+      <button class="location-pill" (click)="locateUser()">
+        <ion-icon name="location" class="pin-icon"></ion-icon>
+        <span class="city-label">Rabat</span>
+        <ion-icon name="chevron-down-outline" class="chev-icon"></ion-icon>
+      </button>
+      <div class="topbar-right">
+        <button class="icon-btn" (click)="toggleFilters()" title="Filtres avancés">
+          <ion-icon name="layers-outline"></ion-icon>
         </button>
-        <button type="button" class="icon-bubble" (click)="locateUser()" [disabled]="isLocating">
+        <button class="icon-btn icon-btn--add" (click)="toggleSplitView()" title="Options">
+          <ion-icon name="add-outline"></ion-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Vue Carte ────────────────────────────────── -->
+    <div class="carte-view" *ngIf="!isListMode">
+
+      <!-- Map surface -->
+      <div class="map-wrap" #mapPanel>
+        <div #googleMap class="map-canvas"></div>
+
+        <!-- Locate FAB -->
+        <button class="locate-fab" (click)="locateUser()" [disabled]="isLocating" title="Ma position">
           <ion-spinner *ngIf="isLocating" name="crescent"></ion-spinner>
           <ion-icon *ngIf="!isLocating" name="locate-outline"></ion-icon>
         </button>
-      </div>
-    </section>
 
-    <section class="map-search surface-card">
-      <ion-icon name="search-outline"></ion-icon>
-      <ion-input
-        [(ngModel)]="searchQuery"
-        type="text"
-        placeholder="Rechercher avec Google Maps..."
-        (keyup.enter)="searchInGoogleMaps()"
-      ></ion-input>
-      <button
-        type="button"
-        class="map-search__button"
-        (click)="searchInGoogleMaps()"
-        [disabled]="isSearchingPlaces || !searchQuery.trim()"
-      >
-        <ion-spinner *ngIf="isSearchingPlaces" name="crescent"></ion-spinner>
-        <ion-icon *ngIf="!isSearchingPlaces" name="arrow-forward-outline"></ion-icon>
-      </button>
-    </section>
-
-    <p class="map-search__feedback" *ngIf="mapSearchMessage">{{ mapSearchMessage }}</p>
-
-    <section class="split-layout" [class.split]="isSplitView">
-      <div class="split-layout__left">
-        <section class="section-heading">
-          <h2>Recommandé pour vous</h2>
-          <ion-spinner *ngIf="isLoadingRecommendations" name="crescent"></ion-spinner>
-        </section>
-
-        <p class="map-search__feedback" *ngIf="recommendationsErrorMessage">{{ recommendationsErrorMessage }}</p>
-
-        <section class="explore-list" *ngIf="recommendedPlaces.length">
-          <app-place-card
-            *ngFor="let item of recommendedPlaces"
-            [place]="item.place"
-            [distanceKm]="item.distanceKm"
-            [selected]="selectedPlace?.id === item.place.id"
-            [favorite]="isFavorite(item.place)"
-            [meta]="getPlaceMeta(item.place)"
-            (selectPlace)="selectPlace($event)"
-            (toggleFavorite)="onToggleFavorite($event)"
-            (viewOnMap)="onViewOnMap($event)"
-            (openRoute)="onOpenRoute($event)"
-          ></app-place-card>
-        </section>
-
-        <section class="section-heading">
-          <h2>Filtres</h2>
-          <span class="soft-pill">{{ visiblePlacesCount }}</span>
-        </section>
-
-        <div class="map-filters">
-          <button
-            type="button"
-            *ngFor="let filter of filters"
-            [class.active]="selectedFilter === filter"
-            (click)="selectFilter(filter)"
-          >
-            {{ filter }}
-          </button>
+        <!-- Selected place popup -->
+        <div class="map-popup" *ngIf="selectedPlace as sp" (click)="focusSelectedPlace()">
+          <div class="popup-body">
+            <span class="popup-name">{{ sp.name }}</span>
+            <div class="popup-sub">
+              <span *ngIf="sp.rating > 0">⭐ {{ sp.rating.toFixed(1) }}</span>
+              <span *ngIf="distanceKmFromUser(sp) !== undefined"> · {{ distanceKmFromUser(sp)!.toFixed(1) }} km</span>
+            </div>
+          </div>
+          <ion-icon name="chevron-forward-outline" class="popup-chevron"></ion-icon>
         </div>
 
-        <section class="advanced-filters surface-card">
-          <div class="advanced-filters__row">
-            <label>Distance max (km)</label>
-            <ion-range [(ngModel)]="filterState.maxDistanceKm" min="1" max="50" step="1" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
-            <span class="value">{{ filterState.maxDistanceKm }} km</span>
-          </div>
+        <!-- Loading/Error banner -->
+        <div class="map-banner" *ngIf="isMapLoading || mapErrorMessage">
+          <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!isMapLoading" name="alert-circle-outline"></ion-icon>
+          <span>{{ isMapLoading ? 'Chargement de la carte…' : mapErrorMessage }}</span>
+        </div>
 
-          <div class="advanced-filters__row">
-            <label>Note minimum</label>
-            <ion-range [(ngModel)]="filterState.minRating" min="0" max="5" step="0.5" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
-            <span class="value">{{ filterState.minRating }}</span>
-          </div>
-
-          <div class="advanced-filters__row">
-            <label>Budget max (MAD)</label>
-            <ion-range [(ngModel)]="filterState.maxBudgetMad" min="50" max="2000" step="50" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
-            <span class="value">{{ filterState.maxBudgetMad }} MAD</span>
-          </div>
-        </section>
-
-        <section class="section-heading">
-          <h2>Explorer</h2>
-          <a routerLink="/tabs/home">Accueil</a>
-        </section>
-
-        <section class="explore-list" *ngIf="filteredPlaces.length">
-          <div *ngFor="let place of filteredPlaces" [attr.id]="'place-' + place.id">
-            <app-place-card
-              [place]="place"
-              [distanceKm]="distanceKmFromUser(place)"
-              [selected]="selectedPlace?.id === place.id"
-              [favorite]="isFavorite(place)"
-              [meta]="getPlaceMeta(place)"
-              (selectPlace)="selectPlace($event)"
-              (toggleFavorite)="onToggleFavorite($event)"
-              (viewOnMap)="onViewOnMap($event)"
-              (openRoute)="onOpenRoute($event)"
-            ></app-place-card>
-          </div>
-        </section>
-      </div>
-
-      <div class="split-layout__right" #mapPanel>
-        <section class="map-canvas surface-card">
-          <div #googleMap class="google-map"></div>
-
-          <button
-            type="button"
-            class="map-center-button"
-            *ngIf="selectedPlace"
-            (click)="focusSelectedPlace()"
-          >
-            <ion-icon name="locate-outline"></ion-icon>
+        <!-- Route info -->
+        <div class="map-route-hint" *ngIf="routeDistanceText && routeDurationText && selectedPlace">
+          <ion-icon name="navigate-outline"></ion-icon>
+          <span>{{ routeDistanceText }}</span>
+          <span class="hint-dot">·</span>
+          <ion-icon name="time-outline"></ion-icon>
+          <span>{{ routeDurationText }}</span>
+          <button class="hint-open" (click)="openRouteInGoogleMaps()" *ngIf="routeUrl">
+            Ouvrir
           </button>
-
-          <div class="map-canvas__overlay" *ngIf="isMapLoading || mapErrorMessage">
-            <ion-spinner *ngIf="isMapLoading" name="crescent"></ion-spinner>
-            <div>
-              <strong>{{ isMapLoading ? 'Chargement de Google Maps...' : 'Carte indisponible' }}</strong>
-              <p>{{ isMapLoading ? 'La carte se prepare dans cette page.' : mapErrorMessage }}</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="route-panel surface-card" *ngIf="selectedPlace as place; else emptyMapState">
-          <div class="route-panel__header">
-            <div>
-              <p class="eyebrow">Itineraire</p>
-              <h2>{{ place.name }}</h2>
-            </div>
-            <span class="soft-pill">{{ place.location }}</span>
-          </div>
-
-          <p class="route-panel__copy">{{ routeMessage }}</p>
-
-          <div class="route-panel__meta">
-            <span>
-              <ion-icon name="pin-outline"></ion-icon>
-              {{ place.address }}
-            </span>
-            <span *ngIf="routeDistanceText">
-              <ion-icon name="navigate-outline"></ion-icon>
-              {{ routeDistanceText }}
-            </span>
-            <span *ngIf="routeDurationText">
-              <ion-icon name="time-outline"></ion-icon>
-              ~{{ routeDurationText }}
-            </span>
-          </div>
-
-          <div class="route-panel__actions">
-            <ion-button size="small" fill="outline" (click)="locateUser()">
-              Actualiser ma position
-            </ion-button>
-            <ion-button size="small" *ngIf="routeUrl" (click)="openRouteInGoogleMaps()">
-              Ouvrir la route
-            </ion-button>
-          </div>
-        </section>
-
-        <ng-template #emptyMapState>
-          <section class="route-panel surface-card">
-            <h2>Aucun lieu selectionne</h2>
-            <p>Touchez un marqueur ou un lieu dans la liste pour preparer l itineraire et recentrer la carte.</p>
-          </section>
-        </ng-template>
+        </div>
       </div>
-    </section>
-  </div>
+
+      <!-- Bottom Sheet -->
+      <div class="bottom-sheet">
+        <div class="drag-handle"></div>
+
+        <div class="sheet-header">
+          <div class="title-row">
+            <h2 class="sheet-title">Lieux à explorer</h2>
+            <span class="count-badge">{{ filteredPlaces.length }}</span>
+            <span class="flex-gap"></span>
+            <button class="filtres-btn" (click)="toggleFilters()">Filtres</button>
+          </div>
+
+          <!-- Advanced filters (collapsible) -->
+          <div class="adv-filters" *ngIf="isFiltersExpanded">
+            <div class="range-row">
+              <div class="range-label">
+                <span>Distance</span><strong>{{ filterState.maxDistanceKm }} km</strong>
+              </div>
+              <ion-range [(ngModel)]="filterState.maxDistanceKm" min="1" max="50" step="1" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+            </div>
+            <div class="range-row">
+              <div class="range-label">
+                <span>Note min</span><strong>{{ filterState.minRating }} ★</strong>
+              </div>
+              <ion-range [(ngModel)]="filterState.minRating" min="0" max="5" step="0.5" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+            </div>
+          </div>
+
+          <div class="chip-row">
+            <button
+              class="chip"
+              *ngFor="let f of filters"
+              [class.chip--on]="selectedFilter === f"
+              (click)="selectFilter(f)"
+            >{{ f }}</button>
+          </div>
+        </div>
+
+        <div class="cards-scroll">
+          <div
+            class="place-card"
+            *ngFor="let p of filteredPlaces; let i = index"
+            [id]="'place-' + p.id"
+            [class.place-card--sel]="selectedPlace?.id === p.id"
+            (click)="selectPlace(p)"
+          >
+            <div class="card-img" [ngClass]="getCardColorClass(i)">
+              <div class="card-top">
+                <span class="loc-chip">
+                  <ion-icon name="location"></ion-icon>{{ p.location }}
+                </span>
+                <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
+                  <ion-icon
+                    [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
+                    [class.fav-on]="isFavorite(p)"
+                  ></ion-icon>
+                </button>
+              </div>
+              <div class="card-foot">
+                <span class="cat-tag">{{ p.category }}</span>
+                <div class="name-row">
+                  <span class="pname">{{ p.name }}</span>
+                  <span class="pdist" *ngIf="distanceKmFromUser(p) !== undefined">
+                    {{ distanceKmFromUser(p)!.toFixed(1) }}km
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="empty-msg" *ngIf="!filteredPlaces.length">
+            <ion-icon name="search-outline"></ion-icon>
+            <p>Aucun lieu ne correspond à ces filtres.</p>
+          </div>
+        </div>
+      </div>
+    </div><!-- /carte-view -->
+
+    <!-- ── Liste déroulée ────────────────────────────── -->
+    <div class="list-view" *ngIf="isListMode">
+      <div class="sheet-header sheet-header--flat">
+        <div class="title-row">
+          <h2 class="sheet-title">Lieux à explorer</h2>
+          <span class="count-badge">{{ filteredPlaces.length }}</span>
+          <span class="flex-gap"></span>
+          <button class="filtres-btn" (click)="toggleFilters()">Filtres</button>
+        </div>
+
+        <div class="adv-filters" *ngIf="isFiltersExpanded">
+          <div class="range-row">
+            <div class="range-label">
+              <span>Distance</span><strong>{{ filterState.maxDistanceKm }} km</strong>
+            </div>
+            <ion-range [(ngModel)]="filterState.maxDistanceKm" min="1" max="50" step="1" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+          </div>
+          <div class="range-row">
+            <div class="range-label">
+              <span>Note min</span><strong>{{ filterState.minRating }} ★</strong>
+            </div>
+            <ion-range [(ngModel)]="filterState.minRating" min="0" max="5" step="0.5" snaps="true" (ionChange)="onFilterStateChanged()"></ion-range>
+          </div>
+        </div>
+
+        <div class="chip-row">
+          <button
+            class="chip"
+            *ngFor="let f of filters"
+            [class.chip--on]="selectedFilter === f"
+            (click)="selectFilter(f)"
+          >{{ f }}</button>
+        </div>
+      </div>
+
+      <div class="list-cards">
+        <div
+          class="place-card place-card--tall"
+          *ngFor="let p of filteredPlaces; let i = index"
+          [id]="'place-' + p.id"
+          [class.place-card--sel]="selectedPlace?.id === p.id"
+          (click)="selectPlace(p)"
+        >
+          <div class="card-img" [ngClass]="getCardColorClass(i)">
+            <div class="card-top">
+              <span class="loc-chip">
+                <ion-icon name="location"></ion-icon>{{ p.location }}
+              </span>
+              <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
+                <ion-icon
+                  [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
+                  [class.fav-on]="isFavorite(p)"
+                ></ion-icon>
+              </button>
+            </div>
+            <div class="card-foot">
+              <span class="cat-tag">{{ p.category }}</span>
+              <div class="name-row">
+                <span class="pname">{{ p.name }}</span>
+                <span class="pdist" *ngIf="distanceKmFromUser(p) !== undefined">
+                  {{ distanceKmFromUser(p)!.toFixed(1) }}km
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="empty-msg" *ngIf="!filteredPlaces.length">
+          <ion-icon name="search-outline"></ion-icon>
+          <p>Aucun lieu ne correspond à ces filtres.</p>
+        </div>
+      </div>
+    </div><!-- /list-view -->
+
+    <!-- ── Bottom Navigation Pills ───────────────────── -->
+    <div class="bottom-nav">
+      <div class="nav-pills">
+        <button
+          class="nav-pill"
+          [class.nav-pill--on]="!isListMode"
+          (click)="switchToMapView()"
+        >
+          <ion-icon name="map-outline"></ion-icon>
+          Vue carte
+        </button>
+        <button
+          class="nav-pill"
+          [class.nav-pill--on]="isListMode"
+          (click)="isListMode = true"
+        >
+          <ion-icon name="list-outline"></ion-icon>
+          Liste déroulée
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /page-wrap -->
 </ion-content>

@@ -392,8 +392,7 @@ export class CoreDataService {
   }
 
   private hasValidSession(): boolean {
-    const token = this.authService.getAccessToken();
-    return typeof token === 'string' && token.trim().length > 0;
+    return this.authService.isAuthenticated();
   }
 
   private normalizeFavoriteList(response: unknown): FavoriteRecord[] {

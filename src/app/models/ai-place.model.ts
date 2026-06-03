@@ -8,6 +8,8 @@ export interface AiPlaceSearchResult {
   rating?: number;
   imageUrl?: string;
   fallbackImageUrl?: string;
+  photo_url?: string;
+  photo_urls?: string[];
   latitude?: number;
   longitude?: number;
   googleMapsUrl?: string;

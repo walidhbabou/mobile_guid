@@ -1,6 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { Place } from '../data/tourism.data';
-import { CoreDataService } from '../services/core-data.service';
+import { FavoritesService } from '../services/favorites.service';
 
 @Component({
   selector: 'app-tab3',
@@ -8,37 +10,69 @@ import { CoreDataService } from '../services/core-data.service';
   styleUrls: ['tab3.page.scss'],
   standalone: false,
 })
-export class Tab3Page {
-  favoritePlaces: Place[] = [];
-  viewedPlacesCount = 0;
-  coveredCitiesCount = 0;
+export class Tab3Page implements OnInit, OnDestroy {
+  favorites: Place[] = [];
+  selectedCategory = 'Tout';
+  private sub?: Subscription;
 
-  constructor(private coreDataService: CoreDataService) {}
+  constructor(
+    private favoritesService: FavoritesService,
+    private router: Router
+  ) {}
 
-  ionViewWillEnter() {
-    this.coreDataService.getFavoritePlaces().subscribe((favorites) => {
-      const places = favorites.map((favorite) => favorite.place);
-      this.favoritePlaces = places;
-      this.viewedPlacesCount = places.length;
-      this.coveredCitiesCount = new Set(places.map((place: Place) => place.location)).size;
+  ngOnInit() {
+    this.sub = this.favoritesService.favorites$.subscribe(places => {
+      this.favorites = places;
     });
   }
 
-  get latestFavorite(): Place | null {
-    return this.favoritePlaces[0] ?? null;
+  ionViewWillEnter() {
+    this.favorites = this.favoritesService.getSnapshot();
   }
 
-  get favoriteCities(): string[] {
-    return Array.from(new Set(
-      this.favoritePlaces
-        .map((place: Place) => place.location)
-        .filter((location: string) => location.trim().length > 0)
-    )).slice(0, 4);
+  ngOnDestroy() {
+    this.sub?.unsubscribe();
   }
 
-  handlePlaceImageError(place: Place) {
-    place.imageUrl = place.fallbackImageUrl && place.imageUrl !== place.fallbackImageUrl
-      ? place.fallbackImageUrl
-      : undefined;
+  get categories(): string[] {
+    const cats = this.favorites.map(p => p.category).filter(Boolean);
+    return Array.from(new Set(cats));
+  }
+
+  get filteredFavorites(): Place[] {
+    if (this.selectedCategory === 'Tout') return this.favorites;
+    return this.favorites.filter(p => p.category === this.selectedCategory);
+  }
+
+  selectCategory(cat: string) {
+    this.selectedCategory = cat;
+  }
+
+  onRemoveFavorite(place: Place) {
+    this.favoritesService.toggle(place);
+  }
+
+  onSelectPlace(place: Place) {
+    void this.router.navigate(['/tabs/place', place.id]);
+  }
+
+  onViewOnMap(place: Place) {
+    void this.router.navigate(['/tabs/map'], {
+      queryParams: {
+        placeId: place.id,
+        name: place.name,
+        ...(typeof place.latitude === 'number' ? { latitude: String(place.latitude) } : {}),
+        ...(typeof place.longitude === 'number' ? { longitude: String(place.longitude) } : {}),
+        ...(place.photo_url ? { photo_url: place.photo_url } : {}),
+      },
+    });
+  }
+
+  onOpenRoute(place: Place) {
+    this.onViewOnMap(place);
+  }
+
+  trackById(index: number, place: Place) {
+    return place.id || index;
   }
 }
