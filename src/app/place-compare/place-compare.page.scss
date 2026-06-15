@@ -1,0 +1,383 @@
+// ── Tokens ──────────────────────────────────────────────────
+:host {
+  --c-sky: #2563EB;
+  --c-sky-dark: #1D4ED8;
+  --c-sky-light: #E0F2FE;
+  --c-bg: #F0F9FF;
+  --c-surface: #ffffff;
+  --c-text: #0C2D48;
+  --c-text-2: #5f7698;
+  --c-text-3: #a0aec0;
+  --c-best: #2563EB;
+  --c-best-bg: #EFF9FF;
+  --c-border: rgba(14, 165, 233, 0.12);
+  --sh-card: 0 4px 20px rgba(14, 165, 233, 0.10);
+}
+
+.cmp-screen {
+  --background: var(--c-bg);
+}
+
+// ── Header ───────────────────────────────────────────────────
+.cmp-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: calc(env(safe-area-inset-top) + 14px) 16px 14px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 2px 12px rgba(14, 165, 233, 0.07);
+}
+
+.cmp-back {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  border: none;
+  background: var(--c-sky-light);
+  color: var(--c-sky-dark);
+  display: grid; place-items: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.cmp-header__titles {
+  flex: 1;
+  min-width: 0;
+}
+
+.cmp-header__eyebrow {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--c-sky);
+  margin-bottom: 2px;
+}
+
+.cmp-header__title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--c-text);
+}
+
+.cmp-clear {
+  border: none;
+  background: none;
+  color: var(--c-text-2);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: background 0.15s;
+  &:active { background: rgba(0,0,0,0.05); }
+}
+
+// ── Empty state ───────────────────────────────────────────────
+.cmp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 72px 32px;
+  color: var(--c-text-3);
+  text-align: center;
+
+  ion-icon { font-size: 3rem; color: var(--c-sky-light); }
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--c-text-2);
+    line-height: 1.7;
+  }
+}
+
+.cmp-empty__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 12px 28px;
+  border-radius: 999px;
+  background: var(--c-sky);
+  color: #fff;
+  border: none;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.32);
+  ion-icon { font-size: 1rem; }
+}
+
+// ── Body ─────────────────────────────────────────────────────
+.cmp-body {
+  padding: 16px 0 calc(16px + env(safe-area-inset-bottom));
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+// ── Column grid ───────────────────────────────────────────────
+.cmp-cols {
+  display: flex;
+  gap: 10px;
+  padding: 0 12px;
+  min-width: max-content;
+  align-items: flex-start;
+}
+
+// ── Label column ─────────────────────────────────────────────
+.cmp-col--labels {
+  width: 90px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.cmp-row-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 62px;
+  color: var(--c-text-2);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.03em;
+
+  ion-icon { font-size: 1rem; color: var(--c-sky); }
+}
+
+.cmp-row-action {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ── Place column ─────────────────────────────────────────────
+.cmp-col {
+  width: 155px;
+  flex-shrink: 0;
+  background: var(--c-surface);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: var(--sh-card);
+  border: 1px solid var(--c-border);
+  animation: colIn 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @for $i from 1 through 3 {
+    &:nth-child(#{$i + 1}) { animation-delay: #{($i - 1) * 60}ms; }
+  }
+}
+
+@keyframes colIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+// ── Place header ─────────────────────────────────────────────
+.cmp-col__head {
+  position: relative;
+}
+
+.cmp-col__remove {
+  position: absolute;
+  top: 8px; right: 8px;
+  z-index: 3;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.38);
+  border: none;
+  color: #fff;
+  display: grid; place-items: center;
+  font-size: 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s;
+  &:active { background: rgba(0,0,0,0.58); }
+}
+
+.cmp-col__photo {
+  height: 110px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--c-sky-light);
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 55%;
+    background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+  }
+}
+
+.cmp-col__info {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.cmp-col__badge {
+  display: inline-block;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--c-sky);
+  margin-bottom: 3px;
+}
+
+.cmp-col__name {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--c-text);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// ── Data cell ─────────────────────────────────────────────────
+.cmp-cell {
+  height: 62px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--c-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  position: relative;
+  transition: background 0.2s;
+
+  span {
+    font-size: 0.75rem;
+    color: var(--c-text-2);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  &--best {
+    background: var(--c-best-bg);
+
+    span { color: var(--c-sky-dark); font-weight: 600; }
+  }
+
+  &--stars {
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+  }
+}
+
+.cmp-stars {
+  font-size: 0.7rem;
+  color: #F59E0B;
+  letter-spacing: 1px;
+}
+
+.cmp-score {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--c-text);
+}
+
+.cmp-best-badge {
+  position: absolute;
+  top: 5px; right: 6px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: var(--c-sky);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+// ── Detail button ──────────────────────────────────────────────
+.cmp-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: calc(100% - 20px);
+  margin: 0 10px;
+  padding: 9px 0;
+  background: var(--c-sky);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.30);
+  transition: background 0.15s;
+
+  ion-icon { font-size: 0.85rem; }
+  &:active { background: var(--c-sky-dark); }
+}
+
+// ── Add slot ─────────────────────────────────────────────────
+.cmp-col--add {
+  background: rgba(224, 242, 254, 0.5);
+  border: 2px dashed rgba(14, 165, 233, 0.3);
+  box-shadow: none;
+}
+
+.cmp-col__head--add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 200px;
+  padding: 20px 14px;
+  text-align: center;
+
+  ion-icon {
+    font-size: 2.2rem;
+    color: var(--c-sky);
+    opacity: 0.5;
+  }
+
+  span {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--c-sky-dark);
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.7rem;
+    color: var(--c-text-3);
+    line-height: 1.5;
+  }
+}
+
+/* ===== MODE SOMBRE ===== */
+:host-context(html.dark) {
+  --c-sky: #3B82F6;
+  --c-sky-dark: #60A5FA;
+  --c-sky-light: rgba(59,130,246,0.16);
+  --c-bg: #0F172A;
+  --c-surface: #1E293B;
+  --c-text: #E2E8F0;
+  --c-text-2: #94A3B8;
+  --c-text-3: #64748B;
+  --c-best: #3B82F6;
+  --c-best-bg: rgba(59,130,246,0.14);
+  --c-border: rgba(148,163,184,0.16);
+  --sh-card: 0 4px 20px rgba(0,0,0,0.4);
+}

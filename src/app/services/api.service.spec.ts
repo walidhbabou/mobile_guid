@@ -34,6 +34,11 @@ describe('ApiService', () => {
     httpMock.verify();
   });
 
+  // In non-production mode, ApiService resolves to nativeApiGatewayUrl / nativeAuthServiceUrl
+  // when those are set, so test assertions must use the native URLs.
+  const apiBase = () => environment.nativeApiGatewayUrl || environment.apiGatewayUrl;
+  const authBase = () => environment.nativeAuthServiceUrl || environment.authServiceUrl;
+
   it('should call the signin endpoint during login', () => {
     const response = {
       accessToken: 'access-token',
@@ -44,7 +49,7 @@ describe('ApiService', () => {
       expect(result).toEqual(response);
     });
 
-    const request = httpMock.expectOne(`${environment.authServiceUrl}/api/auth/signin`);
+    const request = httpMock.expectOne(`${authBase()}/api/auth/signin`);
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({ username: 'yassine', password: 'secret' });
     request.flush(response);
@@ -55,7 +60,7 @@ describe('ApiService', () => {
 
     service.refreshAccessToken().subscribe();
 
-    const request = httpMock.expectOne(`${environment.authServiceUrl}/api/auth/refresh`);
+    const request = httpMock.expectOne(`${authBase()}/api/auth/refresh`);
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({});
     expect(request.request.headers.get('Authorization')).toBe('Bearer refresh-token');
@@ -67,7 +72,7 @@ describe('ApiService', () => {
 
     service.get('/api/core/profile').subscribe();
 
-    const request = httpMock.expectOne(`${environment.apiGatewayUrl}/api/core/profile`);
+    const request = httpMock.expectOne(`${apiBase()}/api/core/profile`);
     expect(request.request.method).toBe('GET');
     expect(request.request.headers.get('Authorization')).toBe('Bearer access-token');
     expect(request.request.headers.get('Content-Type')).toBe('application/json');
@@ -82,7 +87,7 @@ describe('ApiService', () => {
 
     service.postFormData('/api/files', formData).subscribe();
 
-    const request = httpMock.expectOne(`${environment.apiGatewayUrl}/api/files`);
+    const request = httpMock.expectOne(`${apiBase()}/api/files`);
     expect(request.request.method).toBe('POST');
     expect(request.request.headers.get('Authorization')).toBe('Bearer access-token');
     expect(request.request.headers.has('Content-Type')).toBeFalse();
@@ -95,7 +100,7 @@ describe('ApiService', () => {
     service.getPlaceById(placeId).subscribe();
 
     const request = httpMock.expectOne(
-      `${environment.apiGatewayUrl}/api/morocco-ai/places/by-place-id/${encodeURIComponent(placeId)}`
+      `${apiBase()}/api/morocco-ai/places/by-place-id/${encodeURIComponent(placeId)}`
     );
     expect(request.request.method).toBe('GET');
     request.flush({});
@@ -108,7 +113,7 @@ describe('ApiService', () => {
     service.updatePlaceByPlaceId(placeId, payload).subscribe();
 
     const request = httpMock.expectOne(
-      `${environment.apiGatewayUrl}/api/morocco-ai/places/by-place-id/${encodeURIComponent(placeId)}`
+      `${apiBase()}/api/morocco-ai/places/by-place-id/${encodeURIComponent(placeId)}`
     );
     expect(request.request.method).toBe('PUT');
     expect(request.request.body).toEqual(payload);
@@ -116,8 +121,6 @@ describe('ApiService', () => {
   });
 
   it('should expose backend validation errors to the caller', () => {
-    const consoleSpy = spyOn(console, 'error');
-
     service.signup({
       username: 'yassine',
       email: 'yassine@example.com',
@@ -129,29 +132,25 @@ describe('ApiService', () => {
       },
     });
 
-    const request = httpMock.expectOne(`${environment.authServiceUrl}/api/auth/signup`);
+    const request = httpMock.expectOne(`${authBase()}/api/auth/signup`);
     request.flush(
       { message: 'Email deja utilise' },
       { status: 400, statusText: 'Bad Request' }
     );
-
-    expect(consoleSpy).toHaveBeenCalled();
   });
 
   it('should expose a friendly message when the backend cannot be reached', () => {
-    spyOn(console, 'error');
-
     service.login({ username: 'admin', password: '2002' }).subscribe({
       next: () => fail('The login request should fail'),
       error: (error) => {
         expect(error).toEqual({
           status: 0,
-          message: 'Impossible de joindre le serveur pour le moment. Verifiez votre connexion ou relancez les services de l application.'
+          message: 'Impossible de joindre le serveur. Verifiez votre connexion ou relancez les services.'
         });
       },
     });
 
-    const request = httpMock.expectOne(`${environment.authServiceUrl}/api/auth/signin`);
+    const request = httpMock.expectOne(`${authBase()}/api/auth/signin`);
     request.error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
   });
 

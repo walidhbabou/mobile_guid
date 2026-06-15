@@ -186,16 +186,27 @@
               <span class="hm-card__badge">
                 {{ isResult ? 'Suggestion IA' : entity.spotlight }}
               </span>
-              <button
-                type="button"
-                class="hm-card__fav"
-                [class.hm-card__fav--on]="isFavorite(mainCardFavId(entity, isResult))"
-                (click)="onToggleMainCard(entity, isResult)"
-              >
-                <ion-icon
-                  [name]="isFavorite(mainCardFavId(entity, isResult)) ? 'heart' : 'heart-outline'"
-                ></ion-icon>
-              </button>
+              <div class="hm-card__top-actions">
+                <button
+                  type="button"
+                  class="hm-card__fav"
+                  [class.hm-card__fav--on]="isFavorite(mainCardFavId(entity, isResult))"
+                  (click)="onToggleMainCard(entity, isResult)"
+                >
+                  <ion-icon
+                    [name]="isFavorite(mainCardFavId(entity, isResult)) ? 'heart' : 'heart-outline'"
+                  ></ion-icon>
+                </button>
+                <button
+                  type="button"
+                  class="hm-card__cmp"
+                  [class.hm-card__cmp--on]="isInCompare(entity)"
+                  (click)="onToggleCompare($event, entity)"
+                  [title]="isInCompare(entity) ? 'Retirer du comparateur' : 'Ajouter au comparateur'"
+                >
+                  <ion-icon name="git-compare-outline"></ion-icon>
+                </button>
+              </div>
             </div>
 
             <div class="hm-card__body">
@@ -273,6 +284,14 @@
                 (click)="onToggleMiniCardFav($event, card)"
               >
                 <ion-icon [name]="isFavorite(card.id) ? 'heart' : 'heart-outline'"></ion-icon>
+              </button>
+              <button
+                type="button"
+                class="hm-mini-card__cmp"
+                [class.hm-mini-card__cmp--on]="isInCompare(card)"
+                (click)="onToggleCompare($event, card)"
+              >
+                <ion-icon name="git-compare-outline"></ion-icon>
               </button>
             </div>
             <div class="hm-mini-card__body">

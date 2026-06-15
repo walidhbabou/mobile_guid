@@ -1,48 +1,114 @@
 <ion-content [fullscreen]="true" class="favorites-screen">
-  <div class="app-screen favorites-page">
+  <div class="fav-page">
 
-    <section class="fav-hero">
-      <div class="fav-hero__copy">
-        <p class="fav-hero__eyebrow">
-          <ion-icon name="heart"></ion-icon>
-          Ma collection
-        </p>
-        <h1>Favoris</h1>
-      </div>
-      <div class="fav-hero__badge" *ngIf="favorites.length">
-        <strong>{{ favorites.length }}</strong>
-        <span>lieu{{ favorites.length > 1 ? 'x' : '' }}</span>
-      </div>
-    </section>
+    <!-- Header -->
+    <div class="fav-header">
+      <p class="fav-eyebrow">MA COLLECTION</p>
+      <h1 class="fav-title">Favoris</h1>
+    </div>
 
-    <div class="fav-stats surface-card" *ngIf="favorites.length">
-      <div class="fav-stat">
-        <div class="fav-stat__icon">
-          <ion-icon name="bookmark"></ion-icon>
+    <!-- Search Bar -->
+    <div class="fav-search">
+      <ion-icon name="search-outline" class="fav-search__icon"></ion-icon>
+      <input
+        class="fav-search__input"
+        type="text"
+        placeholder="Rechercher dans vos favoris..."
+        [value]="searchQuery"
+        (input)="onSearchInput($event)"
+      />
+      <button class="fav-search__mic" type="button">
+        <ion-icon name="mic-outline"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Filter Chips -->
+    <div class="fav-filters" *ngIf="favorites.length">
+      <button
+        type="button"
+        class="fav-chip"
+        [class.fav-chip--active]="selectedCategory === 'Tout'"
+        (click)="selectCategory('Tout')"
+      >Tous</button>
+      <button
+        type="button"
+        *ngFor="let cat of categories"
+        class="fav-chip"
+        [class.fav-chip--active]="selectedCategory === cat"
+        (click)="selectCategory(cat)"
+      >{{ cat }}</button>
+    </div>
+
+    <!-- Count + Sort row -->
+    <div class="fav-meta-row" *ngIf="displayedFavorites.length">
+      <span class="fav-count">
+        {{ displayedFavorites.length }} lieu{{ displayedFavorites.length > 1 ? 'x' : '' }} sauvegardé{{ displayedFavorites.length > 1 ? 's' : '' }}
+      </span>
+      <button type="button" class="fav-sort-btn">Trier</button>
+    </div>
+
+    <!-- Cards List -->
+    <div class="fav-list" *ngIf="displayedFavorites.length">
+      <div
+        class="fav-card"
+        *ngFor="let place of displayedFavorites; trackBy: trackById; let i = index"
+        [style.--item-i]="i"
+        (click)="onSelectPlace(place)"
+      >
+        <!-- Thumbnail with gradient + real image overlay -->
+        <div class="fav-card__thumb" [ngClass]="'thumb--' + getCategoryKey(place.category)">
+          <img
+            *ngIf="place.photo_url || place.imageUrl"
+            [src]="place.photo_url || place.imageUrl"
+            [alt]="place.name"
+            class="fav-card__img"
+          />
         </div>
-        <div class="fav-stat__text">
-          <strong>{{ favorites.length }}</strong>
-          <span>Sauvegardé{{ favorites.length > 1 ? 's' : '' }}</span>
+
+        <!-- Body -->
+        <div class="fav-card__body">
+          <span class="fav-card__cat" [ngClass]="'cat--' + getCategoryKey(place.category)">
+            {{ place.category | uppercase }}
+          </span>
+          <h3 class="fav-card__name">{{ place.name }}</h3>
+          <div class="fav-card__meta">
+            <span class="fav-card__rating">★ {{ place.rating | number:'1.1-1' }}</span>
+            <ion-icon name="location-outline" class="fav-card__pin"></ion-icon>
+            <span class="fav-card__location">{{ place.city || place.location }}</span>
+          </div>
         </div>
-      </div>
-      <div class="fav-stat-divider"></div>
-      <div class="fav-stat">
-        <div class="fav-stat__icon fav-stat__icon--green">
-          <ion-icon name="layers-outline"></ion-icon>
-        </div>
-        <div class="fav-stat__text">
-          <strong>{{ categories.length }}</strong>
-          <span>Catégorie{{ categories.length > 1 ? 's' : '' }}</span>
+
+        <!-- Action buttons -->
+        <div class="fav-card__actions">
+          <button
+            type="button"
+            class="fav-card__cmp"
+            [class.fav-card__cmp--on]="isInCompare(place)"
+            (click)="onToggleCompare(place); $event.stopPropagation()"
+            aria-label="Comparer"
+          >
+            <ion-icon name="git-compare-outline"></ion-icon>
+          </button>
+          <button
+            type="button"
+            class="fav-card__heart"
+            (click)="onRemoveFavorite(place); $event.stopPropagation()"
+            aria-label="Retirer des favoris"
+          >
+            <ion-icon name="heart"></ion-icon>
+          </button>
         </div>
       </div>
     </div>
 
-    <div class="fav-empty surface-card" *ngIf="!favorites.length">
-      <div class="fav-empty__rings">
-        <div class="fav-ring fav-ring--1"></div>
-        <div class="fav-ring fav-ring--2"></div>
-        <div class="fav-ring fav-ring--3"></div>
-      </div>
+    <!-- No search/filter match -->
+    <div class="fav-no-match" *ngIf="favorites.length && !displayedFavorites.length">
+      <ion-icon name="search-outline"></ion-icon>
+      <p>Aucun résultat trouvé.</p>
+    </div>
+
+    <!-- Empty state (no favorites at all) -->
+    <div class="fav-empty" *ngIf="!favorites.length">
       <div class="fav-empty__icon">
         <ion-icon name="heart-outline"></ion-icon>
       </div>
@@ -53,55 +119,6 @@
         Explorer les lieux
       </ion-button>
     </div>
-
-    <ng-container *ngIf="favorites.length">
-
-      <section class="fav-filters" aria-label="Filtres par catégorie" *ngIf="categories.length > 1">
-        <button
-          type="button"
-          class="fav-chip"
-          [class.fav-chip--active]="selectedCategory === 'Tout'"
-          (click)="selectCategory('Tout')"
-        >
-          <ion-icon name="apps-outline"></ion-icon>
-          Tout
-        </button>
-        <button
-          type="button"
-          class="fav-chip"
-          *ngFor="let cat of categories"
-          [class.fav-chip--active]="selectedCategory === cat"
-          (click)="selectCategory(cat)"
-        >
-          {{ cat }}
-        </button>
-      </section>
-
-      <div class="fav-list" *ngIf="filteredFavorites.length; else noMatch">
-        <div
-          *ngFor="let place of filteredFavorites; trackBy: trackById; let i = index"
-          class="fav-list__item"
-          [style.--item-i]="i"
-        >
-          <app-place-card
-            [place]="place"
-            [favorite]="true"
-            (toggleFavorite)="onRemoveFavorite($event)"
-            (selectPlace)="onSelectPlace($event)"
-            (viewOnMap)="onViewOnMap($event)"
-            (openRoute)="onOpenRoute($event)"
-          ></app-place-card>
-        </div>
-      </div>
-
-      <ng-template #noMatch>
-        <div class="fav-no-match">
-          <ion-icon name="search-outline"></ion-icon>
-          <p>Aucun favori dans cette catégorie.</p>
-        </div>
-      </ng-template>
-
-    </ng-container>
 
   </div>
 </ion-content>

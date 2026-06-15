@@ -19,14 +19,6 @@ export class Tab4Page {
     });
   }
 
-  get latestNotification(): NotificationItem | null {
-    return this.notifications[0] ?? null;
-  }
-
-  get otherNotifications(): NotificationItem[] {
-    return this.notifications.slice(1);
-  }
-
   get notificationCount(): number {
     return this.notifications.length;
   }

@@ -2,12 +2,14 @@ import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { IonicModule } from '@ionic/angular';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { RouterTestingModule } from '@angular/router/testing';
 
 import { ExploreContainerComponentModule } from '../explore-container/explore-container.module';
 import { AiPlaceService } from '../services/ai-place.service';
+import { CompareService } from '../services/compare.service';
 import { CoreDataService } from '../services/core-data.service';
+import { FavoritesService } from '../services/favorites.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
 import { UserLocationService } from '../services/user-location.service';
 
@@ -53,6 +55,23 @@ describe('Tab1Page', () => {
           provide: UserLocationService,
           useValue: {
             getCurrentLocation: () => Promise.resolve(null),
+          },
+        },
+        {
+          provide: FavoritesService,
+          useValue: {
+            favorites$: new BehaviorSubject([]).asObservable(),
+            isFavorite: () => false,
+            toggle: () => {},
+          },
+        },
+        {
+          provide: CompareService,
+          useValue: {
+            isSelected: () => false,
+            toggle: () => 'added',
+            places$: new BehaviorSubject([]).asObservable(),
+            count: 0,
           },
         },
       ],

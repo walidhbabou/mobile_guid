@@ -238,55 +238,42 @@ export class CoreDataService {
   getNotifications(): Observable<NotificationItem[]> {
     return forkJoin({
       favorites: this.getFavoritePlaces(),
-      history: this.getHistoryPlaces(6),
-      categories: this.getCategories(),
-      places: this.placeCatalogService.getPlaces(),
+      history: this.getHistoryPlaces(30),
     }).pipe(
-      map(({ favorites, history, categories, places }) => {
-        const notifications: NotificationItem[] = [];
+      map(({ favorites, history }) => {
+        const items: Array<{ notif: NotificationItem; date?: string }> = [];
 
-        if (favorites[0]) {
-          notifications.push({
-            icon: 'heart-outline',
-            title: 'Lieu enregistre',
-            description: `${favorites[0].place.name} fait maintenant partie de vos adresses preferees.`,
-            time: this.formatRelativeTime(favorites[0].createdAt) || 'Recent',
-            tone: 'primary',
+        favorites.forEach(fav => {
+          items.push({
+            notif: {
+              icon: 'heart-outline',
+              title: 'Lieu enregistre',
+              description: `${fav.place.name} a ete ajoute a vos favoris.`,
+              time: this.formatRelativeTime(fav.createdAt) || 'Recent',
+              tone: 'primary',
+            },
+            date: fav.createdAt,
           });
-        }
+        });
 
-        if (history[0]) {
-          notifications.push({
-            icon: 'time-outline',
-            title: 'Derniere visite',
-            description: `${history[0].place.name} est pret a etre retrouve dans votre historique de voyage.`,
-            time: this.formatRelativeTime(history[0].visitedAt) || 'Recent',
-            tone: 'secondary',
+        history.forEach(entry => {
+          items.push({
+            notif: {
+              icon: 'time-outline',
+              title: 'Lieu visite',
+              description: `${entry.place.name} a ete consulte.`,
+              time: this.formatRelativeTime(entry.visitedAt) || 'Recent',
+              tone: 'secondary',
+            },
+            date: entry.visitedAt,
           });
-        }
+        });
 
-        if (categories.length > 0) {
-          notifications.push({
-            icon: 'grid-outline',
-            title: 'Ambiances disponibles',
-            description: `${categories.length} styles de sorties sont deja disponibles dans votre catalogue.`,
-            time: 'Catalogue',
-            tone: 'success',
-          });
-        }
+        items.sort((a, b) => this.compareDates(b.date, a.date));
 
-        if (notifications.length === 0 && places.length > 0) {
-          notifications.push({
-            icon: 'compass-outline',
-            title: 'Catalogue pret',
-            description: `${places.length} lieux sont disponibles pour commencer votre prochaine exploration.`,
-            time: 'Maintenant',
-            tone: 'secondary',
-          });
-        }
-
-        return notifications.slice(0, 4);
-      })
+        return items.map(i => i.notif);
+      }),
+      catchError(() => of([]))
     );
   }
 
@@ -322,22 +309,25 @@ export class CoreDataService {
           actions.push({
             icon: 'heart-outline',
             title: 'Dernier favori',
-            subtitle: `${favoritePlaces[0].name} a ${favoritePlaces[0].location}`,
+            subtitle: `${favoritePlaces[0].name} à ${favoritePlaces[0].location}`,
+            link: '/tabs/favorites',
           });
         }
 
         if (historyPlaces[0]) {
           actions.push({
             icon: 'time-outline',
-            title: 'Derniere visite',
-            subtitle: `${historyPlaces[0].name} reste disponible dans votre parcours recent`,
+            title: 'Dernière visite',
+            subtitle: `${historyPlaces[0].name} — disponible dans votre parcours récent`,
+            link: '/tabs/home',
           });
         }
 
         actions.push({
           icon: 'earth-outline',
-          title: 'Villes explorees',
-          subtitle: `${distinctCities.length} villes differentes nourrissent deja votre univers de voyage`,
+          title: 'Villes explorées',
+          subtitle: `${distinctCities.length} villes différentes dans votre univers de voyage`,
+          link: '/tabs/map',
         });
 
         return {

@@ -62,4 +62,5 @@ export interface ProfileAction {
   icon: string;
   title: string;
   subtitle: string;
+  link?: string;
 }

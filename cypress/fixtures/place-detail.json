@@ -1,0 +1,13 @@
+{
+  "id": 1,
+  "place_id": "plage-bahia-agadir",
+  "name": "Plage Bahia",
+  "city": "agadir",
+  "category": "beach",
+  "description": "Une plage magnifique avec sable doré et eaux calmes.",
+  "address": "Corniche, Agadir",
+  "latitude": 30.42,
+  "longitude": -9.6,
+  "rating": 4.8,
+  "photo_url": "https://picsum.photos/seed/plage-bahia/600/400"
+}

@@ -71,7 +71,7 @@ describe('PlaceCatalogService', () => {
       expect(places[0].id).toBe('beach-1');
       expect(places[0].location).toBe('Agadir');
       expect(places[0].category).toBe('Beach');
-      expect(places[0].theme).toBe('theme-agadir');
+      expect(places[0].theme).toBe('theme-blue-ocean');
       expect(places[0].icon).toBe('water-outline');
       expect(places[0].imageUrl).toBeUndefined();
       expect(places[0].fallbackImageUrl).toContain('picsum.photos');

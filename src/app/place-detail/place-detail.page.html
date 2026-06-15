@@ -29,6 +29,17 @@
           <ion-icon [name]="isFavorite ? 'heart' : 'heart-outline'"></ion-icon>
         </button>
 
+        <button
+          type="button"
+          class="circle-button"
+          (click)="sharePlace()"
+          [disabled]="isSharing"
+          title="Partager"
+        >
+          <ion-spinner *ngIf="isSharing" name="crescent"></ion-spinner>
+          <ion-icon *ngIf="!isSharing" name="share-social-outline"></ion-icon>
+        </button>
+
       </div>
     </section>
 

@@ -214,13 +214,7 @@ export class ApiService {
       if (environment.production) {
         return normalizedUrl;
       }
-      const currentHost = window.location.hostname;
-      if (!currentHost) {
-        return normalizedNativeUrl || normalizedUrl;
-      }
-      const parsedUrl = new URL(normalizedUrl);
-      parsedUrl.hostname = currentHost;
-      return parsedUrl.toString().replace(/\/$/, '');
+      return normalizedNativeUrl || normalizedUrl;
     } catch {
       return normalizedNativeUrl || normalizedUrl;
     }

@@ -1,122 +1,239 @@
 <ion-content [fullscreen]="true" class="profile-screen">
-  <div class="app-screen">
-    <section class="profile-card surface-card scenic-visual theme-rabat">
-      <div class="profile-card__top">
-        <div class="profile-avatar">{{ userInitial }}</div>
 
-        <div class="profile-copy">
-          <p class="eyebrow">Profil</p>
-          <h1>{{ userName }}</h1>
-          <p>{{ userEmail }}</p>
+  <!-- ── Hero ──────────────────────────────────────────────────────── -->
+  <div class="profile-hero scenic-visual theme-rabat">
+    <div class="hero-inner">
+      <div class="avatar-wrap">
+        <div class="avatar-ring">
+          <div class="profile-avatar">{{ userInitial }}</div>
         </div>
       </div>
 
-      <div class="badge-row" *ngIf="profileBadges.length">
-        <span class="soft-pill" *ngFor="let badge of profileBadges">{{ badge }}</span>
+      <div class="hero-text">
+        <p class="hero-label">Profil voyageur</p>
+        <h1>{{ userName }}</h1>
+        <p class="hero-email">{{ userEmail }}</p>
       </div>
+    </div>
 
-      <section class="profile-highlight glass-card" *ngIf="primaryAction as action">
-        <p class="eyebrow">En ce moment</p>
-        <h2>{{ action.title }}</h2>
-        <p>{{ action.subtitle }}</p>
-      </section>
-    </section>
+    <div class="hero-badges" *ngIf="profileBadges.length">
+      <span class="badge-pill" *ngFor="let badge of profileBadges">{{ badge }}</span>
+    </div>
 
-    <section class="stats-grid">
-      <article class="stat-card glass-card" *ngFor="let stat of profileStats">
+    <div class="completion-block" *ngIf="profileCompletion < 100">
+      <div class="completion-meta">
+        <span>Profil complété</span>
+        <strong>{{ profileCompletion }}%</strong>
+      </div>
+      <div class="completion-track">
+        <div class="completion-fill" [style.width.%]="profileCompletion"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <!-- ── Stats ─────────────────────────────────────────────────── -->
+    <div class="stats-strip glass-card" *ngIf="profileStats.length">
+      <div class="stat-item" *ngFor="let stat of profileStats; let last = last">
         <strong>{{ stat.value }}</strong>
         <span>{{ stat.label }}</span>
-      </article>
+        <div class="stat-sep" *ngIf="!last"></div>
+      </div>
+    </div>
+
+    <!-- ── Toast messages ────────────────────────────────────────── -->
+    <div class="msg-toast msg-toast--ok" *ngIf="profileMessage && profileMessageType === 'success'">
+      <ion-icon name="checkmark-circle-outline"></ion-icon>
+      <span>{{ profileMessage }}</span>
+    </div>
+    <div class="msg-toast msg-toast--err" *ngIf="profileMessage && profileMessageType === 'error'">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+      <span>{{ profileMessage }}</span>
+    </div>
+
+    <!-- ── Apparence ─────────────────────────────────────────────── -->
+    <section class="settings-card">
+      <div class="card-head">
+        <div class="card-head__icon card-head__icon--blue">
+          <ion-icon name="moon-outline"></ion-icon>
+        </div>
+        <h2>Apparence</h2>
+      </div>
+
+      <div class="theme-row">
+        <div class="theme-row__text">
+          <span class="theme-row__title">Mode sombre</span>
+          <span class="theme-row__sub">Couleurs sombres, reposant pour les yeux</span>
+        </div>
+        <ion-toggle [checked]="isDarkMode" (ionChange)="onToggleDarkMode()"></ion-toggle>
+      </div>
     </section>
 
-    <section class="surface-card editor-card">
-      <div class="section-heading">
+    <!-- ── Informations personnelles ─────────────────────────────── -->
+    <section class="settings-card">
+      <div class="card-head">
+        <div class="card-head__icon card-head__icon--blue">
+          <ion-icon name="person-outline"></ion-icon>
+        </div>
         <h2>Informations personnelles</h2>
-        <span class="section-hint" *ngIf="isProfileLoading">Chargement...</span>
+        <button class="edit-toggle" (click)="toggleProfileEdit()" [class.edit-toggle--active]="isEditingProfile">
+          <ion-icon [name]="isEditingProfile ? 'close-outline' : 'create-outline'"></ion-icon>
+        </button>
       </div>
 
-      <div class="editor-grid">
-        <label class="editor-field editor-field--full">
-          <span>Nom complet</span>
-          <input type="text" [(ngModel)]="profileForm.fullName" placeholder="Votre nom complet" />
-        </label>
+      <div class="field-stack">
+        <div class="pf-field">
+          <label>Nom complet</label>
+          <div class="pf-field__shell" [class.pf-field__shell--active]="isEditingProfile">
+            <ion-icon name="person-outline"></ion-icon>
+            <input type="text" [(ngModel)]="profileForm.fullName"
+                   [readonly]="!isEditingProfile" placeholder="Votre nom complet" />
+          </div>
+        </div>
 
-        <label class="editor-field">
-          <span>Email</span>
-          <input type="email" [(ngModel)]="profileForm.email" placeholder="nom@exemple.com" />
-        </label>
+        <div class="pf-field">
+          <label>Email</label>
+          <div class="pf-field__shell" [class.pf-field__shell--active]="isEditingProfile">
+            <ion-icon name="mail-outline"></ion-icon>
+            <input type="email" [(ngModel)]="profileForm.email"
+                   [readonly]="!isEditingProfile" placeholder="nom@exemple.com" />
+          </div>
+        </div>
 
-        <label class="editor-field">
-          <span>Telephone</span>
-          <input type="tel" [(ngModel)]="profileForm.phone" placeholder="+212..." />
-        </label>
+        <div class="pf-field">
+          <label>Téléphone</label>
+          <div class="pf-field__shell" [class.pf-field__shell--active]="isEditingProfile">
+            <ion-icon name="call-outline"></ion-icon>
+            <input type="tel" [(ngModel)]="profileForm.phone"
+                   [readonly]="!isEditingProfile" placeholder="+212 6XX XXX XXX" />
+          </div>
+        </div>
       </div>
 
-      <div class="editor-actions">
-        <ion-button size="small" [disabled]="isProfileSaving" (click)="saveProfile()">
+      <div class="card-foot" *ngIf="isEditingProfile">
+        <button class="btn-cancel" (click)="cancelProfileEdit()">Annuler</button>
+        <button class="btn-save" [disabled]="isProfileSaving" (click)="saveProfile()">
           <ion-spinner *ngIf="isProfileSaving" name="crescent"></ion-spinner>
           <span *ngIf="!isProfileSaving">Enregistrer</span>
-        </ion-button>
+        </button>
       </div>
     </section>
 
-    <section class="surface-card feedback-card" *ngIf="profileMessage">
-      <p>{{ profileMessage }}</p>
-    </section>
-
-    <section class="surface-card editor-card">
-      <div class="section-heading">
-        <h2>Mot de passe</h2>
+    <!-- ── Sécurité ───────────────────────────────────────────────── -->
+    <section class="settings-card">
+      <div class="card-head">
+        <div class="card-head__icon card-head__icon--orange">
+          <ion-icon name="shield-checkmark-outline"></ion-icon>
+        </div>
+        <h2>Sécurité</h2>
       </div>
 
-      <div class="editor-grid">
-        <label class="editor-field editor-field--full">
-          <span>Mot de passe actuel</span>
-          <input type="password" [(ngModel)]="passwordForm.currentPassword" placeholder="Mot de passe actuel" />
-        </label>
+      <div class="field-stack">
+        <div class="pf-field">
+          <label>Mot de passe actuel</label>
+          <div class="pf-field__shell pf-field__shell--active">
+            <ion-icon name="lock-closed-outline"></ion-icon>
+            <input [type]="showCurrentPwd ? 'text' : 'password'"
+                   [(ngModel)]="passwordForm.currentPassword" placeholder="••••••••" />
+            <button class="eye-btn" (click)="showCurrentPwd = !showCurrentPwd">
+              <ion-icon [name]="showCurrentPwd ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+            </button>
+          </div>
+        </div>
 
-        <label class="editor-field">
-          <span>Nouveau mot de passe</span>
-          <input type="password" [(ngModel)]="passwordForm.newPassword" placeholder="Au moins 6 caracteres" />
-        </label>
+        <div class="pf-field">
+          <label>Nouveau mot de passe</label>
+          <div class="pf-field__shell pf-field__shell--active">
+            <ion-icon name="key-outline"></ion-icon>
+            <input [type]="showNewPwd ? 'text' : 'password'"
+                   [(ngModel)]="passwordForm.newPassword" placeholder="Au moins 6 caractères" />
+            <button class="eye-btn" (click)="showNewPwd = !showNewPwd">
+              <ion-icon [name]="showNewPwd ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+            </button>
+          </div>
+          <div class="pwd-strength" *ngIf="passwordForm.newPassword">
+            <div class="pwd-strength__bar">
+              <div class="pwd-strength__fill"
+                   [style.width.%]="passwordStrength"
+                   [class.pwd-strength__fill--weak]="passwordStrength <= 33"
+                   [class.pwd-strength__fill--med]="passwordStrength > 33 && passwordStrength <= 66"
+                   [class.pwd-strength__fill--strong]="passwordStrength > 66"></div>
+            </div>
+            <span class="pwd-strength__label"
+                  [class.color-weak]="passwordStrength <= 33"
+                  [class.color-med]="passwordStrength > 33 && passwordStrength <= 66"
+                  [class.color-strong]="passwordStrength > 66">{{ passwordStrengthLabel }}</span>
+          </div>
+        </div>
 
-        <label class="editor-field">
-          <span>Confirmation</span>
-          <input type="password" [(ngModel)]="passwordForm.confirmPassword" placeholder="Confirmez le mot de passe" />
-        </label>
+        <div class="pf-field">
+          <label>Confirmation</label>
+          <div class="pf-field__shell pf-field__shell--active">
+            <ion-icon name="checkmark-circle-outline"></ion-icon>
+            <input [type]="showConfirmPwd ? 'text' : 'password'"
+                   [(ngModel)]="passwordForm.confirmPassword" placeholder="Confirmez le mot de passe" />
+            <button class="eye-btn" (click)="showConfirmPwd = !showConfirmPwd">
+              <ion-icon [name]="showConfirmPwd ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="editor-actions">
-        <ion-button size="small" fill="outline" [disabled]="isPasswordSaving" (click)="updatePassword()">
+      <div class="inline-msg inline-msg--err" *ngIf="passwordMessage && passwordMessageType === 'error'">
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>{{ passwordMessage }}</span>
+      </div>
+      <div class="inline-msg inline-msg--ok" *ngIf="passwordMessage && passwordMessageType === 'success'">
+        <ion-icon name="checkmark-circle-outline"></ion-icon>
+        <span>{{ passwordMessage }}</span>
+      </div>
+
+      <div class="card-foot">
+        <button class="btn-save btn-save--outline" [disabled]="isPasswordSaving" (click)="updatePassword()">
           <ion-spinner *ngIf="isPasswordSaving" name="crescent"></ion-spinner>
-          <span *ngIf="!isPasswordSaving">Mettre a jour</span>
-        </ion-button>
+          <span *ngIf="!isPasswordSaving">Mettre à jour</span>
+        </button>
       </div>
     </section>
 
-    <section class="surface-card feedback-card" *ngIf="passwordMessage">
-      <p>{{ passwordMessage }}</p>
-    </section>
-
-    <section class="actions surface-card" *ngIf="secondaryActions.length">
-      <div class="section-heading">
+    <!-- ── Mon espace ─────────────────────────────────────────────── -->
+    <section class="settings-card" *ngIf="secondaryActions.length">
+      <div class="card-head">
+        <div class="card-head__icon card-head__icon--purple">
+          <ion-icon name="compass-outline"></ion-icon>
+        </div>
         <h2>Mon espace</h2>
       </div>
 
-      <button type="button" class="action-row" *ngFor="let action of secondaryActions">
-        <div class="action-row__icon">
-          <ion-icon [name]="action.icon"></ion-icon>
-        </div>
-        <div class="action-row__copy">
-          <h3>{{ action.title }}</h3>
-          <p>{{ action.subtitle }}</p>
-        </div>
-        <ion-icon name="chevron-forward-outline"></ion-icon>
-      </button>
+      <div class="action-list">
+        <button type="button" class="action-item"
+                *ngFor="let action of secondaryActions"
+                [routerLink]="action.link || null">
+          <div class="action-item__icon">
+            <ion-icon [name]="action.icon"></ion-icon>
+          </div>
+          <div class="action-item__body">
+            <span>{{ action.title }}</span>
+            <p>{{ action.subtitle }}</p>
+          </div>
+          <ion-icon name="chevron-forward-outline" class="action-item__arr"></ion-icon>
+        </button>
+      </div>
     </section>
 
-    <ion-button expand="block" class="logout-button" routerLink="/auth/login" (click)="logout()">
-      Se deconnecter
-    </ion-button>
+    <!-- ── Version ─────────────────────────────────────────────────── -->
+    <div class="version-footer">
+      <ion-icon name="cube-outline"></ion-icon>
+      <span>Version {{ appVersion }}</span>
+    </div>
+
+    <!-- ── Déconnexion ─────────────────────────────────────────────── -->
+    <button class="logout-btn" routerLink="/auth/login" (click)="logout()">
+      <ion-icon name="log-out-outline"></ion-icon>
+      <span>Se déconnecter</span>
+    </button>
+
+    <div style="height: 32px;"></div>
   </div>
 </ion-content>

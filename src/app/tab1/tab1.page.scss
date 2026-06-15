@@ -379,11 +379,16 @@
   letter-spacing: 0.02em;
 }
 
-.hm-card__fav {
+.hm-card__top-actions {
   position: absolute;
   top: 12px;
   right: 12px;
   z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+
+.hm-card__fav {
   width: 44px;
   height: 44px;
   border: 0;
@@ -398,6 +403,28 @@
   ion-icon { font-size: 1.1rem; }
 
   &--on { color: #ef4444; }
+  &:active { transform: scale(0.88); }
+}
+
+.hm-card__cmp {
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  color: #9ca3af;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  transition: color 150ms, background 150ms, transform 150ms;
+
+  ion-icon { font-size: 1.1rem; }
+
+  &--on {
+    background: #2563EB;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.38);
+  }
   &:active { transform: scale(0.88); }
 }
 
@@ -604,6 +631,32 @@
   &:active { transform: scale(0.85); }
 }
 
+.hm-mini-card__cmp {
+  position: absolute;
+  top: 6px;
+  right: 42px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: #9ca3af;
+  display: grid;
+  place-items: center;
+  touch-action: manipulation;
+  transition: color 150ms, background 150ms, transform 150ms;
+
+  ion-icon { font-size: 0.88rem; }
+
+  &--on {
+    background: #2563EB;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.38);
+  }
+  &:active { transform: scale(0.85); }
+}
+
 .hm-mini-card__body {
   padding: 10px 10px 12px;
   display: flex;
@@ -723,8 +776,8 @@
   pointer-events: none;
 }
 
-.hm-card__badge { z-index: 3; }
-.hm-card__fav   { z-index: 3; }
+.hm-card__badge        { z-index: 3; }
+.hm-card__top-actions  { z-index: 3; }
 
 // ─── LOADING SKELETONS ────────────────────────────────────
 .hm-skeleton {
@@ -902,4 +955,18 @@
   .hm-card__fav,
   .ed-chip,
   .ed-prompt { transition: none; }
+}
+
+/* ===== MODE SOMBRE ===== */
+:host-context(html.dark) {
+  .ed-search { background: #1E293B; }
+  .ed-search__input { color: #E2E8F0; }
+  .ed-chip { background: #1E293B; color: #cbd5e1; border-color: rgba(148,163,184,0.16); }
+  .ed-ai__text { color: #E2E8F0; }
+  .hm-card, .hm-mini-card { background: #1E293B; }
+  .hm-card__title, .hm-mini-card__title, .hm-card__footer { color: #E2E8F0; }
+  .hm-card__desc { color: #94A3B8; }
+  .ed-prompts { background: #1E293B; }
+  .ed-prompt { color: #cbd5e1; }
+  .hm-skeleton__featured, .hm-skeleton__mini { background: #1E293B; }
 }

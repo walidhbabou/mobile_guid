@@ -1,0 +1,99 @@
+<ion-content [fullscreen]="true" class="cmp-screen">
+
+  <!-- ── Header ─────────────────────────────────────── -->
+  <div class="cmp-header">
+    <button class="cmp-back" (click)="goBack()">
+      <ion-icon name="chevron-back-outline"></ion-icon>
+    </button>
+    <div class="cmp-header__titles">
+      <span class="cmp-header__eyebrow">COMPARATEUR</span>
+      <h1 class="cmp-header__title">Comparer les lieux</h1>
+    </div>
+    <button class="cmp-clear" (click)="clearAll()">Effacer</button>
+  </div>
+
+  <!-- ── Empty state ──────────────────────────────────── -->
+  <div class="cmp-empty" *ngIf="places.length === 0">
+    <ion-icon name="git-compare-outline"></ion-icon>
+    <p>Aucun lieu sélectionné.<br>Ajoutez des lieux depuis la recherche ou la carte.</p>
+    <button class="cmp-empty__cta" [routerLink]="['/tabs/home']">
+      <ion-icon name="compass-outline"></ion-icon>
+      Explorer
+    </button>
+  </div>
+
+  <!-- ── Comparison Table ─────────────────────────────── -->
+  <div class="cmp-body" *ngIf="places.length > 0">
+
+    <!-- Place headers -->
+    <div class="cmp-cols">
+
+      <!-- Row label column -->
+      <div class="cmp-col cmp-col--labels">
+        <div class="cmp-col__head"></div>
+        <div class="cmp-row-label" *ngFor="let row of rows">
+          <ion-icon [name]="row.icon"></ion-icon>
+          <span>{{ row.label }}</span>
+        </div>
+        <div class="cmp-row-action"></div>
+      </div>
+
+      <!-- One column per place -->
+      <div
+        class="cmp-col"
+        *ngFor="let place of places; let i = index"
+        [class.cmp-col--first]="i === 0"
+      >
+        <!-- Place card header -->
+        <div class="cmp-col__head">
+          <button class="cmp-col__remove" (click)="removePlace(place)">
+            <ion-icon name="close-outline"></ion-icon>
+          </button>
+          <div
+            class="cmp-col__photo"
+            [style.backgroundImage]="'url(' + getImage(place) + ')'"
+          ></div>
+          <div class="cmp-col__info">
+            <span class="cmp-col__badge">{{ place.category }}</span>
+            <h3 class="cmp-col__name">{{ place.name }}</h3>
+          </div>
+        </div>
+
+        <!-- Data cells -->
+        <div
+          class="cmp-cell"
+          *ngFor="let row of rows"
+          [class.cmp-cell--best]="isBest(row.key, place)"
+          [class.cmp-cell--stars]="row.key === 'rating'"
+        >
+          <span *ngIf="row.key !== 'rating'">{{ getCellValue(place, row.key) }}</span>
+          <ng-container *ngIf="row.key === 'rating'">
+            <span class="cmp-stars" *ngIf="place.rating">{{ getStars(place.rating) }}</span>
+            <strong class="cmp-score" *ngIf="place.rating">{{ place.rating.toFixed(1) }}</strong>
+            <span *ngIf="!place.rating">—</span>
+          </ng-container>
+          <span class="cmp-best-badge" *ngIf="isBest(row.key, place)">Meilleur</span>
+        </div>
+
+        <!-- Action button -->
+        <div class="cmp-row-action">
+          <button class="cmp-detail-btn" (click)="goToDetail(place)">
+            <ion-icon name="open-outline"></ion-icon>
+            Voir la fiche
+          </button>
+        </div>
+      </div>
+
+      <!-- Add slot (if < 3 places) -->
+      <div class="cmp-col cmp-col--add" *ngIf="places.length < 3">
+        <div class="cmp-col__head cmp-col__head--add">
+          <ion-icon name="add-circle-outline"></ion-icon>
+          <span>Ajouter</span>
+          <p>Sélectionnez un lieu depuis la recherche ou la carte</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</ion-content>

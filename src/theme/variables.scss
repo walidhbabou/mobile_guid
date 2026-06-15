@@ -1,15 +1,16 @@
 :root {
-  --ion-color-primary: #2f80ed;
-  --ion-color-primary-rgb: 47, 128, 237;
+  /* Bleu royal aligne sur la page login (#2563EB -> #1E3A8A) */
+  --ion-color-primary: #2563EB;
+  --ion-color-primary-rgb: 37, 99, 235;
   --ion-color-primary-contrast: #ffffff;
-  --ion-color-primary-shade: #296fce;
-  --ion-color-primary-tint: #448df0;
+  --ion-color-primary-shade: #1D4ED8;
+  --ion-color-primary-tint: #3B82F6;
 
-  --ion-color-secondary: #73b4ff;
-  --ion-color-secondary-rgb: 115, 180, 255;
-  --ion-color-secondary-contrast: #ffffff;
-  --ion-color-secondary-shade: #659ee0;
-  --ion-color-secondary-tint: #82bcff;
+  --ion-color-secondary: #DBEAFE;
+  --ion-color-secondary-rgb: 219, 234, 254;
+  --ion-color-secondary-contrast: #1E3A8A;
+  --ion-color-secondary-shade: #BFDBFE;
+  --ion-color-secondary-tint: #EFF6FF;
 
   --ion-color-success: #4aae80;
   --ion-color-success-rgb: 74, 174, 128;
@@ -17,43 +18,89 @@
   --ion-color-success-shade: #3f9870;
   --ion-color-success-tint: #5db98d;
 
-  --ion-background-color: #eef5ff;
-  --ion-text-color: #15304f;
+  --ion-background-color: #EEF3FF;
+  --ion-text-color: #1E293B;
   --ion-font-family: "Manrope", sans-serif;
 
   --app-font-heading: "Outfit", sans-serif;
   --app-font-body: "Manrope", sans-serif;
-  --app-page-bg: #eef5ff;
+  --app-page-bg: #EEF3FF;
   --app-page-gradient:
-    radial-gradient(circle at 12% 10%, rgba(255, 214, 153, 0.22), transparent 20%),
-    radial-gradient(circle at 88% 12%, rgba(122, 189, 255, 0.40), transparent 28%),
-    radial-gradient(circle at 50% 100%, rgba(136, 189, 255, 0.18), transparent 30%),
-    linear-gradient(180deg, #fafcff 0%, #eef5ff 50%, #e6f0ff 100%);
+    radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.18), transparent 22%),
+    radial-gradient(circle at 88% 12%, rgba(59, 130, 246, 0.18), transparent 28%),
+    radial-gradient(circle at 50% 100%, rgba(30, 58, 138, 0.12), transparent 32%),
+    linear-gradient(180deg, #f4f7ff 0%, #EEF3FF 50%, #DBEAFE 100%);
   --app-surface: rgba(255, 255, 255, 0.96);
   --app-surface-strong: #ffffff;
-  --app-border: rgba(93, 126, 170, 0.16);
-  --app-text-muted: #5f7698;
-  --app-shadow-soft: 0 24px 56px rgba(36, 74, 123, 0.14);
-  --app-shadow-card: 0 16px 34px rgba(46, 83, 132, 0.12);
-  --app-shadow-strong: 0 24px 50px rgba(32, 70, 117, 0.16);
+  --app-border: rgba(37, 99, 235, 0.16);
+  --app-text-muted: #64748B;
+  --app-shadow-soft: 0 24px 56px rgba(30, 58, 138, 0.16);
+  --app-shadow-card: 0 16px 34px rgba(37, 99, 235, 0.14);
+  --app-shadow-strong: 0 24px 50px rgba(29, 78, 216, 0.18);
   --app-accent-warm: #f3b55d;
   --app-accent-warm-rgb: 243, 181, 93;
   --app-radius-card: 28px;
   --app-radius-lg: 22px;
 
-  --app-color-blue-sky: #87CEEB;
-  --app-color-blue-light: #4A90E2;
-  --app-color-blue-dark: #2E7FD4;
-  --app-color-blue-ocean: #1B4D8C;
+  --app-color-blue-sky: #93C5FD;
+  --app-color-blue-light: #3B82F6;
+  --app-color-blue-dark: #2563EB;
+  --app-color-blue-ocean: #1E3A8A;
   --app-color-teal: #2ECAB8;
 
   /* Home editorial theme */
-  --blue-hero-dark: #0C2D6B;
-  --blue-hero-mid: #1A5DB5;
+  --blue-hero-dark: #1E3A8A;
+  --blue-hero-mid: #1D4ED8;
   --blue-accent: #2563EB;
   --blue-nav-active: #1D4ED8;
-  --bg-light: #F8FAFF;
+  --bg-light: #EEF3FF;
   --text-dark: #0F172A;
   --text-muted: #64748B;
-  --border-light: #E2E8F0;
+  --border-light: #DBEAFE;
+}
+
+/* ════════════════ MODE SOMBRE ════════════════
+   Active via la classe `dark` sur <html> (ThemeService). */
+html.dark {
+  --ion-color-primary: #3B82F6;
+  --ion-color-primary-rgb: 59, 130, 246;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-shade: #2563EB;
+  --ion-color-primary-tint: #60A5FA;
+
+  --ion-color-secondary: #1E3A8A;
+  --ion-color-secondary-rgb: 30, 58, 138;
+  --ion-color-secondary-contrast: #DBEAFE;
+  --ion-color-secondary-shade: #172E6E;
+  --ion-color-secondary-tint: #2547A0;
+
+  --ion-background-color: #0F172A;
+  --ion-background-color-rgb: 15, 23, 42;
+  --ion-text-color: #E2E8F0;
+  --ion-text-color-rgb: 226, 232, 240;
+
+  /* Surfaces des composants Ionic */
+  --ion-item-background: #1E293B;
+  --ion-card-background: #1E293B;
+  --ion-toolbar-background: #0F172A;
+
+  /* Jetons applicatifs */
+  --app-page-bg: #0F172A;
+  --app-page-gradient:
+    radial-gradient(circle at 12% 10%, rgba(37, 99, 235, 0.22), transparent 24%),
+    radial-gradient(circle at 88% 12%, rgba(59, 130, 246, 0.16), transparent 30%),
+    radial-gradient(circle at 50% 100%, rgba(30, 58, 138, 0.18), transparent 34%),
+    linear-gradient(180deg, #0b1220 0%, #0F172A 55%, #111c33 100%);
+  --app-surface: rgba(30, 41, 59, 0.94);
+  --app-surface-strong: #1E293B;
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-text-muted: #94A3B8;
+  --app-shadow-soft: 0 24px 56px rgba(0, 0, 0, 0.5);
+  --app-shadow-card: 0 16px 34px rgba(0, 0, 0, 0.42);
+  --app-shadow-strong: 0 24px 50px rgba(0, 0, 0, 0.55);
+
+  --bg-light: #0F172A;
+  --text-dark: #E2E8F0;
+  --text-muted: #94A3B8;
+  --border-light: rgba(148, 163, 184, 0.2);
 }

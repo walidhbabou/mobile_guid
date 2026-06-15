@@ -1,0 +1,28 @@
+{
+  "assistant_reply": "J'ai trouvé des plages magnifiques à Agadir pour vous.",
+  "results_count": 2,
+  "result_limit": 5,
+  "results": [
+    {
+      "id": "plage-bahia-agadir",
+      "name": "Plage Bahia",
+      "location": "Agadir",
+      "category": "Plage",
+      "description": "Une plage magnifique avec sable doré.",
+      "rating": 4.8,
+      "latitude": 30.42,
+      "longitude": -9.6,
+      "photo_url": "https://picsum.photos/seed/plage-bahia/600/400"
+    },
+    {
+      "id": "plage-taghazout",
+      "name": "Plage de Taghazout",
+      "location": "Agadir",
+      "category": "Plage",
+      "description": "Un village de pêcheurs célèbre pour le surf.",
+      "rating": 4.5,
+      "latitude": 30.54,
+      "longitude": -9.71
+    }
+  ]
+}

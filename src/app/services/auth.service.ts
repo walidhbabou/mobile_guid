@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { ApiService } from './api.service';
+import { FavoritesService } from './favorites.service';
 import { TokenService } from './token.service';
 import {
   LoginRequest,
@@ -37,7 +38,8 @@ export class AuthService {
   constructor(
     private apiService: ApiService,
     private tokenService: TokenService,
-    private router: Router
+    private router: Router,
+    private favoritesService: FavoritesService
   ) {}
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
@@ -98,6 +100,7 @@ export class AuthService {
   }
 
   logout(): void {
+    this.favoritesService.clearFavorites();
     this.tokenService.removeTokens();
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');

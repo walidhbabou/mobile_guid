@@ -4,7 +4,9 @@ import * as L from 'leaflet';
 import { Place } from '../data/tourism.data';
 import { RecommendedPlaceApi } from '../models/recommendation.model';
 import { AiPlaceService } from '../services/ai-place.service';
-import { CoreDataService } from '../services/core-data.service';
+import { CompareService } from '../services/compare.service';
+import { FavoritesService } from '../services/favorites.service';
+import { CityPack, CITY_PACKS, OfflinePackService, PackInfo } from '../services/offline-pack.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
 import { UserLocationService } from '../services/user-location.service';
 import { PlaceCardMeta } from '../shared/place-card/place-card.component';
@@ -49,7 +51,6 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   private viewInitialized = false;
   private requestedPlace: Place | null = null;
   private catalogPlaces: Place[] = [];
-  private favoriteBackendIds = new Set<number>();
 
   filterState = {
     maxDistanceKm: 25,
@@ -59,8 +60,103 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
 
   isFiltersExpanded = false;
 
+  // ── Mode hors-ligne "Pack Ville" ──────────────────────────
+  isOfflinePanelOpen = false;
+  readonly cityPacks: CityPack[] = CITY_PACKS;
+  packInfos: Record<string, PackInfo> = {};
+  downloadingId: string | null = null;
+  downloadPercent = 0;
+
   toggleFilters() {
     this.isFiltersExpanded = !this.isFiltersExpanded;
+  }
+
+  toggleOfflinePanel() {
+    this.isOfflinePanelOpen = !this.isOfflinePanelOpen;
+    if (this.isOfflinePanelOpen) {
+      this.loadPackStatuses();
+    }
+  }
+
+  isPackDownloaded(id: string): boolean {
+    return !!this.packInfos[id];
+  }
+
+  formatBytes(bytes?: number): string {
+    if (!bytes) {
+      return '';
+    }
+    if (bytes < 1024 * 1024) {
+      return `${Math.round(bytes / 1024)} Ko`;
+    }
+    return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+  }
+
+  async downloadCityPack(pack: CityPack) {
+    if (this.downloadingId) {
+      return;
+    }
+
+    this.downloadingId = pack.id;
+    this.downloadPercent = 0;
+
+    const places = this.placesForCity(pack);
+
+    try {
+      const info = await this.offlinePackService.downloadPack(pack, places, (progress) => {
+        this.ngZone.run(() => {
+          this.downloadPercent = Math.round(progress.ratio * 100);
+        });
+      });
+      this.ngZone.run(() => {
+        this.packInfos = { ...this.packInfos, [pack.id]: info };
+      });
+    } catch {
+      // Telechargement interrompu (reseau) : le pack partiel reste exploitable.
+    } finally {
+      this.ngZone.run(() => {
+        this.downloadingId = null;
+        this.downloadPercent = 0;
+      });
+    }
+  }
+
+  async removeCityPack(pack: CityPack) {
+    await this.offlinePackService.deletePack(pack);
+    this.ngZone.run(() => {
+      const next = { ...this.packInfos };
+      delete next[pack.id];
+      this.packInfos = next;
+    });
+  }
+
+  private loadPackStatuses() {
+    this.offlinePackService.listDownloaded().then((list) => {
+      this.ngZone.run(() => {
+        const map: Record<string, PackInfo> = {};
+        list.forEach((info) => { map[info.id] = info; });
+        this.packInfos = map;
+      });
+    });
+  }
+
+  private placesForCity(pack: CityPack): Place[] {
+    const [south, west, north, east] = pack.bbox;
+    const target = this.normalizeText(pack.name);
+
+    const inBbox = (place: Place): boolean =>
+      typeof place.latitude === 'number' && typeof place.longitude === 'number'
+      && place.latitude >= south && place.latitude <= north
+      && place.longitude >= west && place.longitude <= east;
+
+    const matchesName = (place: Place): boolean =>
+      this.normalizeText(place.city || '').includes(target)
+      || this.normalizeText(place.location || '').includes(target);
+
+    return this.allPlaces
+      .filter((place: Place) => inBbox(place) || matchesName(place))
+      .sort((a: Place, b: Place) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 50);
   }
 
   toggleListMode() {
@@ -72,9 +168,12 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     this.queueMapResize();
   }
 
-  getCardColorClass(index: number): string {
-    const palette = ['c-red', 'c-gold', 'c-olive', 'c-teal', 'c-burg'];
-    return palette[index % palette.length];
+  getCardBgImage(place: Place): string {
+    const url = place.photo_url
+      ?? place.photo_urls?.[0]
+      ?? place.imageUrl
+      ?? place.fallbackImageUrl;
+    return url ? `url('${url}')` : '';
   }
 
   handlePlaceImageError(place: Place) {
@@ -87,8 +186,33 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     private aiPlaceService: AiPlaceService,
     private ngZone: NgZone,
     private userLocationService: UserLocationService,
-    private coreDataService: CoreDataService
+    private compareService: CompareService,
+    private favoritesService: FavoritesService,
+    private offlinePackService: OfflinePackService,
   ) {}
+
+  get hasUserLocation(): boolean {
+    return this.hasUserCoordinates();
+  }
+
+  /** Libelle affiche dans la pastille de localisation (plus de "Rabat" fige). */
+  get cityLabel(): string {
+    if (this.selectedPlace?.location) {
+      return this.selectedPlace.location;
+    }
+    if (this.hasUserCoordinates()) {
+      return 'Ma position';
+    }
+    return this.filteredPlaces[0]?.location || 'Maroc';
+  }
+
+  isInCompare(place: Place): boolean {
+    return this.compareService.isSelected(place.id);
+  }
+
+  onToggleCompare(place: Place): void {
+    this.compareService.toggle(place);
+  }
 
   ngOnInit() {
     this.route.queryParamMap.subscribe((params: ParamMap) => {
@@ -104,7 +228,7 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     this.isSplitView = typeof window !== 'undefined' ? window.innerWidth >= 920 : false;
     this.loadMapContent();
     void this.locateUser(false, false).then(() => this.refreshRecommendations());
-    this.refreshFavorites();
+    this.loadPackStatuses();
   }
 
   ionViewDidEnter() {
@@ -208,15 +332,10 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   }
 
   refreshRecommendations() {
-    if (typeof this.userLatitude !== 'number' || typeof this.userLongitude !== 'number') {
-      this.recommendedPlaces = [];
-      return;
-    }
-
-    this.isLoadingRecommendations = true;
+    // Les recommandations ne sont pas affichees dans cette vue carte.
+    this.isLoadingRecommendations = false;
     this.recommendationsErrorMessage = '';
-
-   
+    this.recommendedPlaces = [];
   }
 
   async searchInGoogleMaps() {
@@ -284,24 +403,12 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
   }
 
   isFavorite(place: Place): boolean {
-    return typeof place.backendId === 'number' && this.favoriteBackendIds.has(place.backendId);
+    // Meme source de verite que la page details et la page favoris.
+    return this.favoritesService.isFavorite(place.id);
   }
 
   onToggleFavorite(place: Place) {
-    this.coreDataService.toggleFavorite(place).subscribe({
-      next: (isFavorite: boolean) => {
-        if (typeof place.backendId === 'number') {
-          if (isFavorite) {
-            this.favoriteBackendIds.add(place.backendId);
-          } else {
-            this.favoriteBackendIds.delete(place.backendId);
-          }
-        }
-      },
-      error: () => {
-        // Silencieux: certains lieux ne sont pas encore sauvegardes en backend.
-      },
-    });
+    this.favoritesService.toggle(place);
   }
 
   getPlaceMeta(place: Place): PlaceCardMeta {
@@ -310,6 +417,18 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
 
   private loadMapContent() {
     this.placeCatalogService.getPlaces().subscribe((places: Place[]) => {
+      if (places.length === 0) {
+        // Reseau indisponible: repli sur les lieux mis en cache hors-ligne.
+        this.offlinePackService.getCachedPlaces().then((cached: Place[]) => {
+          if (cached.length > 0) {
+            this.ngZone.run(() => {
+              this.catalogPlaces = cached;
+              this.refreshPlaceCollection();
+            });
+          }
+        });
+      }
+
       this.catalogPlaces = places;
       this.refreshPlaceCollection();
     });
@@ -396,10 +515,8 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
         zoomControl: true,
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors',
-      }).addTo(this.googleMap);
+      // Couche hors-ligne: sert les tuiles en cache (packs villes) puis le reseau.
+      this.offlinePackService.createTileLayer().addTo(this.googleMap);
 
       this.mapErrorMessage = '';
       this.syncGoogleMap();
@@ -538,21 +655,6 @@ export class Tab2Page implements OnInit, AfterViewInit, OnDestroy {
     if ((this.googleMap.getZoom?.() ?? 0) < 13) {
       this.googleMap.setZoom(13);
     }
-  }
-
-  private refreshFavorites() {
-    this.coreDataService.getFavoritePlaces().subscribe({
-      next: (favorites) => {
-        this.favoriteBackendIds = new Set(
-          favorites
-            .map((item) => item.place?.backendId)
-            .filter((value: number | undefined): value is number => typeof value === 'number')
-        );
-      },
-      error: () => {
-        this.favoriteBackendIds = new Set<number>();
-      },
-    });
   }
 
   private queueListHighlight(place: Place) {

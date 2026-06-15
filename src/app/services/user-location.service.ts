@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { Capacitor } from '@capacitor/core';
+import { Geolocation } from '@capacitor/geolocation';
 
 export interface UserLocationCoordinates {
   latitude: number;
@@ -30,6 +32,70 @@ export class UserLocationService {
       return this.lastKnownLocation;
     }
 
+    // Sur mobile (Capacitor) on utilise le plugin natif: navigator.geolocation
+    // ne fonctionne pas de facon fiable dans la WebView Android.
+    if (Capacitor.isNativePlatform()) {
+      return this.getNativeLocation(timeout, maximumAge);
+    }
+
+    return this.getBrowserLocation(timeout, maximumAge);
+  }
+
+  private async getNativeLocation(
+    timeout: number,
+    maximumAge: number
+  ): Promise<UserLocationCoordinates | null> {
+    try {
+      if (!(await this.ensureNativePermission())) {
+        return this.lastKnownLocation;
+      }
+
+      const position = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout,
+        maximumAge,
+      });
+
+      return this.storeLocation({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        timestamp: position.timestamp || Date.now(),
+      });
+    } catch {
+      return this.lastKnownLocation;
+    }
+  }
+
+  private async ensureNativePermission(): Promise<boolean> {
+    try {
+      const status = await Geolocation.checkPermissions();
+
+      if (this.isPermissionGranted(status)) {
+        return true;
+      }
+
+      const requested = await Geolocation.requestPermissions({
+        permissions: ['location', 'coarseLocation'],
+      });
+
+      return this.isPermissionGranted(requested);
+    } catch {
+      return false;
+    }
+  }
+
+  private isPermissionGranted(status: {
+    location?: string;
+    coarseLocation?: string;
+  }): boolean {
+    return status.location === 'granted' || status.coarseLocation === 'granted';
+  }
+
+  private async getBrowserLocation(
+    timeout: number,
+    maximumAge: number
+  ): Promise<UserLocationCoordinates | null> {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
       return this.lastKnownLocation;
     }
@@ -43,18 +109,20 @@ export class UserLocationService {
         });
       });
 
-      const nextLocation: UserLocationCoordinates = {
+      return this.storeLocation({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
         accuracy: position.coords.accuracy,
         timestamp: position.timestamp || Date.now(),
-      };
-
-      this.lastKnownLocation = nextLocation;
-      return nextLocation;
+      });
     } catch {
       return this.lastKnownLocation;
     }
+  }
+
+  private storeLocation(location: UserLocationCoordinates): UserLocationCoordinates {
+    this.lastKnownLocation = location;
+    return location;
   }
 
   private canReuseCachedLocation(maximumAge: number): boolean {

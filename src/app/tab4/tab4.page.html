@@ -1,25 +1,16 @@
 <ion-content [fullscreen]="true" class="notifications-screen">
   <div class="app-screen">
 
-    <section class="highlight-card glass-card" *ngIf="latestNotification as item">
-      <div class="highlight-card__top">
-        <span class="soft-pill">{{ item.time }}</span>
-        <ion-icon [name]="item.icon"></ion-icon>
-      </div>
-      <h2>{{ item.title }}</h2>
-      <p>{{ item.description }}</p>
-    </section>
-
     <section class="timeline surface-card">
       <div class="section-heading">
-        <h2>Aujourd hui</h2>
+        <h2>Activite recente</h2>
         <span class="soft-pill">{{ notificationCount }} element(s)</span>
       </div>
 
       <ng-container *ngIf="notifications.length; else emptyNotificationsState">
         <article
           class="notification-card"
-          *ngFor="let item of (otherNotifications.length ? otherNotifications : notifications)"
+          *ngFor="let item of notifications"
           [class.notification-card--primary]="item.tone === 'primary'"
           [class.notification-card--secondary]="item.tone === 'secondary'"
           [class.notification-card--success]="item.tone === 'success'"
@@ -49,7 +40,7 @@
               <h3>Aucune notification</h3>
               <span>En attente</span>
             </div>
-            <p>Vos prochaines activites apparaitront ici des qu un lieu est consulte, sauvegarde ou recommande.</p>
+            <p>Vos prochaines activites apparaitront ici des qu un lieu est consulte ou sauvegarde.</p>
           </div>
         </article>
       </ng-template>

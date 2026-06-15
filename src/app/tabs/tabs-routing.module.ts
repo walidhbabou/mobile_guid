@@ -32,6 +32,10 @@ const routes: Routes = [
         loadChildren: () => import('../place-detail/place-detail.module').then(m => m.PlaceDetailPageModule)
       },
       {
+        path: 'compare',
+        loadChildren: () => import('../place-compare/place-compare.module').then(m => m.PlaceComparePageModule)
+      },
+      {
         path: '',
         redirectTo: 'home',
         pathMatch: 'full'

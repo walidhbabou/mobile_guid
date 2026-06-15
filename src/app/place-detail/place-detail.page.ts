@@ -6,6 +6,7 @@ import { Place, Review } from '../data/tourism.data';
 import { CoreDataService } from '../services/core-data.service';
 import { FavoritesService } from '../services/favorites.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
+import { ShareCardService } from '../services/share-card.service';
 import { parsePhotoUrls } from '../shared/utils/photo-urls.util';
 
 @Component({
@@ -23,6 +24,8 @@ export class PlaceDetailPage implements OnInit, AfterViewInit, OnDestroy {
   audioWave: number[] = [];
   isFavorite = false;
   favoriteMessage = '';
+  isSharing = false;
+  shareMessage = '';
   isAudioPlaying = false;
   audioStatusMessage = '';
   reviewRating = 5;
@@ -46,6 +49,7 @@ export class PlaceDetailPage implements OnInit, AfterViewInit, OnDestroy {
     private coreDataService: CoreDataService,
     private favoritesService: FavoritesService,
     private placeCatalogService: PlaceCatalogService,
+    private shareCardService: ShareCardService,
     private ngZone: NgZone
   ) {}
 
@@ -85,6 +89,24 @@ export class PlaceDetailPage implements OnInit, AfterViewInit, OnDestroy {
     this.favoriteMessage = this.isFavorite
       ? 'Lieu ajoute a vos favoris.'
       : 'Lieu retire de vos favoris.';
+  }
+
+  async sharePlace() {
+    if (!this.place || this.isSharing) {
+      return;
+    }
+
+    this.isSharing = true;
+    this.shareMessage = 'Generation de la carte...';
+
+    try {
+      await this.shareCardService.sharePlaceCard(this.place, this.getDetailImageSrc(this.place));
+      this.shareMessage = '';
+    } catch {
+      this.shareMessage = 'Partage indisponible. Reessayez.';
+    } finally {
+      this.ngZone.run(() => { this.isSharing = false; });
+    }
   }
 
   toggleAudioGuide() {

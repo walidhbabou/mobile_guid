@@ -1,4 +1,34 @@
 <ion-tabs>
+
+  <!-- ── Floating Compare Bar ───────────────────────── -->
+  <div class="compare-bar" *ngIf="compareCount > 0" [@barSlide]>
+    <div class="compare-bar__thumbs">
+      <div
+        class="compare-bar__thumb"
+        *ngFor="let p of comparePlaces"
+        [style.backgroundImage]="'url(' + getThumb(p) + ')'"
+      >
+        <button class="compare-bar__x" (click)="removeFromCompare(p)">
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+      <div class="compare-bar__slot" *ngIf="compareCount < 3">
+        <ion-icon name="add-outline"></ion-icon>
+      </div>
+    </div>
+    <div class="compare-bar__right">
+      <span class="compare-bar__hint">{{ compareCount }}/3 lieu{{ compareCount > 1 ? 'x' : '' }}</span>
+      <button
+        class="compare-bar__btn"
+        [disabled]="compareCount < 2"
+        (click)="goToCompare()"
+      >
+        <ion-icon name="git-compare-outline"></ion-icon>
+        Comparer
+      </button>
+    </div>
+  </div>
+
   <ion-tab-bar slot="bottom" class="app-tab-bar">
     <ion-tab-button tab="home" href="/tabs/home">
       <ion-icon aria-hidden="true" name="home-outline"></ion-icon>

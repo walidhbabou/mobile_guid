@@ -1,0 +1,42 @@
+{
+  "data": {
+    "results": [
+      {
+        "place_id": "plage-bahia-agadir",
+        "name": "Plage Bahia",
+        "city": "agadir",
+        "rating": "4.8",
+        "types": ["beach", "point_of_interest"],
+        "description": "Une plage magnifique avec sable doré et eaux calmes.",
+        "address": "Corniche, Agadir",
+        "latitude": 30.42,
+        "longitude": -9.6,
+        "photo_url": "https://picsum.photos/seed/plage-bahia/600/400"
+      },
+      {
+        "place_id": "medina-fes",
+        "name": "Médina de Fès",
+        "city": "fes",
+        "rating": "4.7",
+        "types": ["cultural", "point_of_interest"],
+        "description": "La plus ancienne médina du monde, classée UNESCO.",
+        "address": "Médina, Fès",
+        "latitude": 34.06,
+        "longitude": -4.98,
+        "photo_url": "https://picsum.photos/seed/medina-fes/600/400"
+      },
+      {
+        "place_id": "jardin-majorelle",
+        "name": "Jardin Majorelle",
+        "city": "marrakech",
+        "rating": "4.6",
+        "types": ["park", "point_of_interest"],
+        "description": "Un jardin botanique aux couleurs vives créé par Jacques Majorelle.",
+        "address": "Rue Yves Saint Laurent, Marrakech",
+        "latitude": 31.64,
+        "longitude": -8.01,
+        "photo_url": "https://picsum.photos/seed/majorelle/600/400"
+      }
+    ]
+  }
+}

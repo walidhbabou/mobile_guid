@@ -44,7 +44,9 @@ export class ImageProxyService {
    */
   private getProxyUrl(imageUrl: string): string {
     const encodedUrl = encodeURIComponent(imageUrl);
-    return `/api/proxy/image?url=${encodedUrl}`;
+    // URL absolue vers le backend: sur mobile une URL relative pointerait vers
+    // la WebView (localhost) et non vers le serveur, ce qui casse les images.
+    return `${this.apiService.getBaseUrl()}/api/proxy/image?url=${encodedUrl}`;
   }
 
   /**

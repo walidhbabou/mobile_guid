@@ -3,20 +3,39 @@
 
     <!-- ── Top Bar ──────────────────────────────────── -->
     <div class="topbar">
-      <button class="location-pill" (click)="locateUser()">
-        <ion-icon name="location" class="pin-icon"></ion-icon>
-        <span class="city-label">Rabat</span>
+      <button class="location-pill" (click)="locateUser()" [disabled]="isLocating">
+        <ion-spinner *ngIf="isLocating" name="crescent" class="pill-spinner"></ion-spinner>
+        <ion-icon *ngIf="!isLocating" name="location" class="pin-icon"></ion-icon>
+        <span class="city-label">{{ cityLabel }}</span>
         <ion-icon name="chevron-down-outline" class="chev-icon"></ion-icon>
       </button>
       <div class="topbar-right">
         <button class="icon-btn" (click)="toggleFilters()" title="Filtres avancés">
           <ion-icon name="layers-outline"></ion-icon>
         </button>
-        <button class="icon-btn icon-btn--add" (click)="toggleSplitView()" title="Options">
-          <ion-icon name="add-outline"></ion-icon>
+        <button class="icon-btn icon-btn--offline" (click)="toggleOfflinePanel()" title="Mode hors-ligne">
+          <ion-icon name="cloud-download-outline"></ion-icon>
         </button>
       </div>
     </div>
+
+    <!-- ── Search bar (OpenStreetMap) ───────────────── -->
+    <div class="search-bar">
+      <ion-icon name="search-outline" class="search-ico"></ion-icon>
+      <input
+        class="search-input"
+        type="text"
+        placeholder="Rechercher un lieu au Maroc…"
+        [(ngModel)]="searchQuery"
+        (keyup.enter)="searchInGoogleMaps()"
+        [disabled]="isSearchingPlaces"
+      />
+      <button class="search-go" (click)="searchInGoogleMaps()" [disabled]="isSearchingPlaces || !searchQuery.trim()">
+        <ion-spinner *ngIf="isSearchingPlaces" name="crescent"></ion-spinner>
+        <ion-icon *ngIf="!isSearchingPlaces" name="arrow-forward-outline"></ion-icon>
+      </button>
+    </div>
+    <p class="search-msg" *ngIf="mapSearchMessage">{{ mapSearchMessage }}</p>
 
     <!-- ── Vue Carte ────────────────────────────────── -->
     <div class="carte-view" *ngIf="!isListMode">
@@ -109,17 +128,26 @@
             [class.place-card--sel]="selectedPlace?.id === p.id"
             (click)="selectPlace(p)"
           >
-            <div class="card-img" [ngClass]="getCardColorClass(i)">
+            <div class="card-img" [style.backgroundImage]="getCardBgImage(p)">
               <div class="card-top">
                 <span class="loc-chip">
                   <ion-icon name="location"></ion-icon>{{ p.location }}
                 </span>
-                <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
-                  <ion-icon
-                    [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
-                    [class.fav-on]="isFavorite(p)"
-                  ></ion-icon>
-                </button>
+                <div class="card-actions">
+                  <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
+                    <ion-icon
+                      [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
+                      [class.fav-on]="isFavorite(p)"
+                    ></ion-icon>
+                  </button>
+                  <button
+                    class="cmp-btn"
+                    [class.cmp-btn--on]="isInCompare(p)"
+                    (click)="$event.stopPropagation(); onToggleCompare(p)"
+                  >
+                    <ion-icon name="git-compare-outline"></ion-icon>
+                  </button>
+                </div>
               </div>
               <div class="card-foot">
                 <span class="cat-tag">{{ p.category }}</span>
@@ -184,17 +212,26 @@
           [class.place-card--sel]="selectedPlace?.id === p.id"
           (click)="selectPlace(p)"
         >
-          <div class="card-img" [ngClass]="getCardColorClass(i)">
+          <div class="card-img" [style.backgroundImage]="getCardBgImage(p)">
             <div class="card-top">
               <span class="loc-chip">
                 <ion-icon name="location"></ion-icon>{{ p.location }}
               </span>
-              <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
-                <ion-icon
-                  [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
-                  [class.fav-on]="isFavorite(p)"
-                ></ion-icon>
-              </button>
+              <div class="card-actions">
+                <button class="fav-btn" (click)="$event.stopPropagation(); onToggleFavorite(p)">
+                  <ion-icon
+                    [name]="isFavorite(p) ? 'heart' : 'heart-outline'"
+                    [class.fav-on]="isFavorite(p)"
+                  ></ion-icon>
+                </button>
+                <button
+                  class="cmp-btn"
+                  [class.cmp-btn--on]="isInCompare(p)"
+                  (click)="$event.stopPropagation(); onToggleCompare(p)"
+                >
+                  <ion-icon name="git-compare-outline"></ion-icon>
+                </button>
+              </div>
             </div>
             <div class="card-foot">
               <span class="cat-tag">{{ p.category }}</span>
@@ -234,6 +271,68 @@
           <ion-icon name="list-outline"></ion-icon>
           Liste déroulée
         </button>
+      </div>
+    </div>
+
+    <!-- ── Panneau Mode hors-ligne "Pack Ville" ──────── -->
+    <div class="offline-overlay" *ngIf="isOfflinePanelOpen" (click)="toggleOfflinePanel()">
+      <div class="offline-sheet" (click)="$event.stopPropagation()">
+        <div class="offline-head">
+          <div class="offline-head__text">
+            <h2>Mode hors-ligne</h2>
+            <p>Téléchargez une ville (carte + 50 meilleurs lieux) pour l'utiliser sans internet — idéal en roaming.</p>
+          </div>
+          <button class="offline-close" (click)="toggleOfflinePanel()" aria-label="Fermer">
+            <ion-icon name="close"></ion-icon>
+          </button>
+        </div>
+
+        <div class="offline-list">
+          <div class="offline-row" *ngFor="let pack of cityPacks">
+            <span class="offline-emoji">{{ pack.emoji }}</span>
+
+            <div class="offline-info">
+              <span class="offline-name">{{ pack.name }}</span>
+
+              <span class="offline-sub" *ngIf="isPackDownloaded(pack.id) && downloadingId !== pack.id">
+                <ion-icon name="checkmark-circle" class="offline-ok"></ion-icon>
+                Disponible hors-ligne · {{ formatBytes(packInfos[pack.id].bytes) }} · {{ packInfos[pack.id].placeCount }} lieux
+              </span>
+
+              <span class="offline-sub" *ngIf="!isPackDownloaded(pack.id) && downloadingId !== pack.id">
+                Carte + 50 meilleurs lieux
+              </span>
+
+              <ng-container *ngIf="downloadingId === pack.id">
+                <span class="offline-sub offline-sub--progress">Téléchargement… {{ downloadPercent }}%</span>
+                <div class="offline-bar">
+                  <div class="offline-bar__fill" [style.width.%]="downloadPercent"></div>
+                </div>
+              </ng-container>
+            </div>
+
+            <button
+              class="offline-btn offline-btn--dl"
+              *ngIf="!isPackDownloaded(pack.id) && downloadingId !== pack.id"
+              (click)="downloadCityPack(pack)"
+              [disabled]="!!downloadingId"
+              aria-label="Télécharger"
+            >
+              <ion-icon name="download-outline"></ion-icon>
+            </button>
+
+            <ion-spinner *ngIf="downloadingId === pack.id" name="crescent" class="offline-spin"></ion-spinner>
+
+            <button
+              class="offline-btn offline-btn--rm"
+              *ngIf="isPackDownloaded(pack.id) && downloadingId !== pack.id"
+              (click)="removeCityPack(pack)"
+              aria-label="Supprimer"
+            >
+              <ion-icon name="trash-outline"></ion-icon>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 

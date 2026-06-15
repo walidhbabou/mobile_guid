@@ -62,7 +62,7 @@ describe('AuthService', () => {
     expect(emissions).toEqual([false, true]);
   });
 
-  it('should not update the auth state when the backend response misses one token', () => {
+  it('should save the access token and emit authenticated when the backend returns no refresh token', () => {
     const emissions: boolean[] = [];
 
     service.isAuthenticated$.subscribe((value: boolean) => emissions.push(value));
@@ -70,8 +70,8 @@ describe('AuthService', () => {
 
     service.login({ username: 'yassine', password: 'secret' }).subscribe();
 
-    expect(tokenServiceSpy.saveTokens).not.toHaveBeenCalled();
-    expect(emissions).toEqual([false]);
+    expect(tokenServiceSpy.saveTokens).toHaveBeenCalledOnceWith('access-only', undefined);
+    expect(emissions).toEqual([false, true]);
   });
 
   it('should delegate signup requests to ApiService', () => {

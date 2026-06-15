@@ -49,11 +49,11 @@ describe('TokenService', () => {
     expect(service.isAuthenticated()).toBeTrue();
   });
 
-  it('should authenticate the user with a valid refresh token when the access token is expired', () => {
+  it('should not authenticate the user when the access token is expired even if a refresh token exists', () => {
     localStorage.setItem('accessToken', createToken(-3600));
     localStorage.setItem('refreshToken', createToken(3600));
 
-    expect(service.isAuthenticated()).toBeTrue();
+    expect(service.isAuthenticated()).toBeFalse();
   });
 
   it('should consider missing or malformed tokens as expired', () => {

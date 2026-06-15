@@ -4,6 +4,7 @@ import { Subscription } from 'rxjs';
 import { Place } from '../data/tourism.data';
 import { AiGuideCard, AiPlaceSearchExperience, AiPlaceSearchResult } from '../models/ai-place.model';
 import { AiPlaceService } from '../services/ai-place.service';
+import { CompareService } from '../services/compare.service';
 import { CoreDataService } from '../services/core-data.service';
 import { FavoritesService } from '../services/favorites.service';
 import { PlaceCatalogService } from '../services/place-catalog.service';
@@ -71,6 +72,7 @@ export class Tab1Page implements OnDestroy {
     private coreDataService: CoreDataService,
     private userLocationService: UserLocationService,
     private favoritesService: FavoritesService,
+    private compareService: CompareService,
     private router: Router
   ) {}
 
@@ -435,6 +437,19 @@ export class Tab1Page implements OnDestroy {
 
   isFavorite(placeId: string): boolean {
     return this.favoriteIds.has(placeId);
+  }
+
+  isInCompare(entity: { id?: string }): boolean {
+    return !!entity.id && this.compareService.isSelected(entity.id);
+  }
+
+  onToggleCompare(event: Event, entity: { id?: string } & Partial<Place>): void {
+    event.stopPropagation();
+    if (!entity.id) return;
+    const result = this.compareService.toggle(entity as Place);
+    if (result === 'full') {
+      // visual feedback handled via CSS — bar already shows 3/3
+    }
   }
 
   onToggleFavoriteResult(result: AiPlaceSearchResult) {

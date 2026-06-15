@@ -309,7 +309,7 @@ describe('AiPlaceService', () => {
       expect(experience.results[0].id).toBe('near-spa');
       expect(experience.results[0].distanceKm).toBeDefined();
       expect(experience.positionNote).toContain('position actuelle');
-      expect(experience.assistantReply).toContain('Near Spa');
+      expect(experience.assistantReply).toBe('Classement distant');
     });
   });
 

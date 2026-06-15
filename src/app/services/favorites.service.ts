@@ -15,10 +15,8 @@ interface BackendFavorite {
 
 @Injectable({ providedIn: 'root' })
 export class FavoritesService {
-  private readonly storageKey = 'favoritePlaces';
-  private readonly backendMapKey = 'favoriteBackendIdMap';
-  private readonly subject = new BehaviorSubject<Place[]>(this.load());
-  private backendIdMap: Map<string, number> = this.loadBackendIdMap();
+  private readonly subject = new BehaviorSubject<Place[]>([]);
+  private backendIdMap: Map<string, number> = new Map();
   private userId: number | null = null;
 
   constructor(
@@ -26,9 +24,33 @@ export class FavoritesService {
     private tokenService: TokenService,
     private placeCatalogService: PlaceCatalogService
   ) {
+    // Restaure immediatement depuis le cache local (userId deja stocke d'une
+    // session precedente) pour ne pas dependre de l'appel profil async.
+    this.userId = this.readStoredUserId();
+    if (this.userId) {
+      const stored = this.load(this.userId);
+      if (stored.length > 0) {
+        this.subject.next(stored);
+      }
+      this.backendIdMap = this.loadBackendIdMap(this.userId);
+    }
+
     if (this.tokenService.isAuthenticated()) {
       this.initUserId();
     }
+  }
+
+  /** Identifiant utilisateur courant, avec repli sur le cache local. */
+  private resolveUserId(): number | null {
+    return this.userId ?? this.readStoredUserId();
+  }
+
+  private storageKey(userId: number): string {
+    return `favoritePlaces_${userId}`;
+  }
+
+  private backendMapKey(userId: number): string {
+    return `favoriteBackendIdMap_${userId}`;
   }
 
   get favorites$(): Observable<Place[]> {
@@ -59,11 +81,22 @@ export class FavoritesService {
     }
   }
 
+  clearFavorites(): void {
+    this.subject.next([]);
+    this.backendIdMap = new Map();
+    this.userId = null;
+  }
+
   private initUserId(): void {
     this.apiService.getCurrentUserProfile().subscribe({
       next: (profile: UserProfileResponse) => {
         this.userId = profile.id;
         try { localStorage.setItem('userId', String(profile.id)); } catch {}
+        const stored = this.load(profile.id);
+        if (stored.length > 0) {
+          this.subject.next(stored);
+          this.backendIdMap = this.loadBackendIdMap(profile.id);
+        }
         this.syncFromBackend();
       },
       error: () => {}
@@ -71,9 +104,10 @@ export class FavoritesService {
   }
 
   private syncFromBackend(): void {
-    if (!this.userId) return;
+    const userId = this.resolveUserId();
+    if (!userId) return;
 
-    (this.apiService.get(`/api/favorites/user/${this.userId}`) as Observable<BackendFavorite[]>).subscribe({
+    (this.apiService.get(`/api/favorites/user/${userId}`) as Observable<BackendFavorite[]>).subscribe({
       next: (favorites: BackendFavorite[]) => {
         if (!Array.isArray(favorites) || favorites.length === 0) return;
 
@@ -176,10 +210,10 @@ export class FavoritesService {
     });
   }
 
-  private load(): Place[] {
+  private load(userId: number): Place[] {
     try {
       if (typeof localStorage === 'undefined') return [];
-      const raw = localStorage.getItem(this.storageKey);
+      const raw = localStorage.getItem(this.storageKey(userId));
       if (!raw) return [];
       const parsed = JSON.parse(raw) as unknown;
       return Array.isArray(parsed)
@@ -191,17 +225,19 @@ export class FavoritesService {
   }
 
   private save(places: Place[]): void {
+    const userId = this.resolveUserId();
+    if (!userId) return;
     try {
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem(this.storageKey, JSON.stringify(places));
+        localStorage.setItem(this.storageKey(userId), JSON.stringify(places));
       }
     } catch {}
   }
 
-  private loadBackendIdMap(): Map<string, number> {
+  private loadBackendIdMap(userId: number): Map<string, number> {
     try {
       if (typeof localStorage === 'undefined') return new Map();
-      const raw = localStorage.getItem(this.backendMapKey);
+      const raw = localStorage.getItem(this.backendMapKey(userId));
       if (!raw) return new Map();
       const obj = JSON.parse(raw) as Record<string, number>;
       return new Map(Object.entries(obj).map(([k, v]) => [k, Number(v)]));
@@ -223,11 +259,13 @@ export class FavoritesService {
   }
 
   private saveBackendIdMap(): void {
+    const userId = this.resolveUserId();
+    if (!userId) return;
     try {
       if (typeof localStorage !== 'undefined') {
         const obj: Record<string, number> = {};
         this.backendIdMap.forEach((v, k) => { obj[k] = v; });
-        localStorage.setItem(this.backendMapKey, JSON.stringify(obj));
+        localStorage.setItem(this.backendMapKey(userId), JSON.stringify(obj));
       }
     } catch {}
   }
