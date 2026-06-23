@@ -48,7 +48,7 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Carte interactive').should('be.visible');
+    cy.contains('Carte interactive').scrollIntoView().should('be.visible');
     cy.screenshot('place-detail-map');
   });
 
@@ -57,8 +57,8 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Guide audio').should('be.visible');
-    cy.contains('Lire audio').should('be.visible');
+    cy.contains('Guide audio').scrollIntoView().should('be.visible');
+    cy.contains('Lire audio').scrollIntoView().should('be.visible');
     cy.screenshot('place-detail-audio');
   });
 
@@ -67,9 +67,9 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Laisser un avis').should('be.visible');
+    cy.contains('Laisser un avis').scrollIntoView().should('be.visible');
     detailPage.ratingChips.should('have.length', 5);
-    detailPage.reviewTextarea.should('be.visible');
+    detailPage.reviewTextarea.scrollIntoView().should('be.visible');
     cy.screenshot('place-detail-review-form');
   });
 
