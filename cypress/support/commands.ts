@@ -15,14 +15,19 @@ const TEST_TOKEN =
   '.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImV4cCI6OTk5OTk5OTk5OX0' +
   '.test-signature';
 
-// Injecte le token directement dans localStorage pour bypasser le formulaire de login
+// Injecte le token directement dans localStorage pour bypasser le formulaire de login.
+// On utilise onBeforeLoad pour garantir que les tokens sont écrits dans l'origine
+// localhost:4200 AVANT qu'Angular ne s'initialise, quelle que soit la page en cours
+// (y compris about:blank lors du testIsolation de Cypress).
 Cypress.Commands.add('loginByApi', () => {
-  cy.window().then((win) => {
-    win.localStorage.setItem('accessToken', TEST_TOKEN);
-    win.localStorage.setItem('token', TEST_TOKEN);
-    win.localStorage.setItem('isLoggedIn', 'true');
-    win.localStorage.setItem('userName', 'Test User');
-    win.localStorage.setItem('userEmail', 'testuser@example.com');
+  cy.visit('/auth/login', {
+    onBeforeLoad(win) {
+      win.localStorage.setItem('accessToken', TEST_TOKEN);
+      win.localStorage.setItem('token', TEST_TOKEN);
+      win.localStorage.setItem('isLoggedIn', 'true');
+      win.localStorage.setItem('userName', 'Test User');
+      win.localStorage.setItem('userEmail', 'testuser@example.com');
+    },
   });
 });
 
@@ -50,7 +55,7 @@ Cypress.Commands.add('interceptApiCalls', () => {
   cy.intercept('GET', '**/api/morocco-ai/places/by-place-id/**', { fixture: 'place-detail.json' }).as('getPlaceDetail');
   cy.intercept('GET', '**/api/auth/me', { fixture: 'user-profile.json' }).as('getProfile');
   cy.intercept('POST', '**/api/auth/validate', { body: { valid: true, userId: 1 } }).as('validateToken');
-  cy.intercept('GET', '**/api/core/favorites/user/**', { body: [] }).as('getFavorites');
+  cy.intercept('GET', '**favorites/user/**', { body: [] }).as('getFavorites');
   cy.intercept('POST', '**/api/favorites', { body: { id: 100, userId: 1, placeId: 1 } }).as('addFavorite');
   cy.intercept('DELETE', '**/api/favorites/**', { body: {} }).as('removeFavorite');
   cy.intercept('GET', '**/api/core/categories', { body: [] }).as('getCategories');

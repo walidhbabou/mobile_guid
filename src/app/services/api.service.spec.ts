@@ -34,10 +34,11 @@ describe('ApiService', () => {
     httpMock.verify();
   });
 
-  // In non-production mode, ApiService resolves to nativeApiGatewayUrl / nativeAuthServiceUrl
-  // when those are set, so test assertions must use the native URLs.
-  const apiBase = () => environment.nativeApiGatewayUrl || environment.apiGatewayUrl;
-  const authBase = () => environment.nativeAuthServiceUrl || environment.authServiceUrl;
+  // In browser tests Capacitor.isNativePlatform() is false, so resolveBaseUrl replaces
+  // the hostname of apiGatewayUrl with window.location.hostname ('localhost' in Karma).
+  // nativeApiGatewayUrl is only used on a real native device.
+  const apiBase = () => environment.apiGatewayUrl;
+  const authBase = () => environment.authServiceUrl || environment.apiGatewayUrl;
 
   it('should call the signin endpoint during login', () => {
     const response = {

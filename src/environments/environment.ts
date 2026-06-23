@@ -8,8 +8,8 @@ export const environment = {
   authServiceUrl: 'http://localhost:8081',
   // On a real Android device, localhost targets the phone itself.
   // Update this LAN IP if your machine address changes.
-  nativeApiGatewayUrl: 'http://192.168.1.33:8081',
-  nativeAuthServiceUrl: 'http://192.168.1.33:8081',
+  nativeApiGatewayUrl: 'http://192.168.1.106:8081',
+  nativeAuthServiceUrl: 'http://192.168.1.106:8081',
   googleMapsApiKey: ''
 };
 

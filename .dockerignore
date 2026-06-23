@@ -1,0 +1,11 @@
+node_modules
+www
+.git
+.gitignore
+*.md
+.angular
+android
+ios
+cypress
+coverage
+guidintelijent_backend

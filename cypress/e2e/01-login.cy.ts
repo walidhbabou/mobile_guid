@@ -5,10 +5,11 @@ const loginPage = new LoginPage();
 describe('01 — Authentification', () => {
   beforeEach(() => {
     cy.intercept('POST', '**/api/auth/signin', { fixture: 'auth-response.json' }).as('signin');
+    cy.intercept('POST', '**/api/auth/validate', { body: { valid: true, userId: 1 } }).as('validateToken');
     cy.intercept('GET', '**/api/auth/me', { fixture: 'user-profile.json' }).as('profile');
     cy.intercept('GET', '**/api/morocco-ai/places', { fixture: 'places.json' }).as('getPlaces');
     cy.intercept('GET', '**/api/core/categories', { body: [] }).as('categories');
-    cy.intercept('GET', '**/api/core/favorites/user/**', { body: [] }).as('favorites');
+    cy.intercept('GET', '**favorites/user/**', { body: [] }).as('favorites');
     cy.intercept('GET', '**/api/core/history/user/**', { body: [] }).as('history');
     loginPage.visit();
   });
