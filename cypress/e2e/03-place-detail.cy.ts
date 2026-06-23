@@ -48,7 +48,17 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Carte interactive').scrollIntoView().should('be.visible');
+    // ion-content uses a shadow-DOM scroll container — use Ionic's own API to scroll.
+    cy.window().then((win) => {
+      const ionContent = win.document.querySelector('ion-content') as any;
+      const target = win.document.querySelector('.map-card') as HTMLElement | null;
+      if (ionContent && target) {
+        const inner = ionContent.shadowRoot?.querySelector('.inner-scroll');
+        const scrollTop = (inner ? (inner as HTMLElement).scrollTop : 0) + target.getBoundingClientRect().top - 20;
+        return ionContent.scrollToPoint(0, scrollTop, 0) as Promise<void>;
+      }
+    });
+    cy.contains('Carte interactive').should('be.visible');
     cy.screenshot('place-detail-map');
   });
 
@@ -57,8 +67,17 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Guide audio').scrollIntoView().should('be.visible');
-    cy.contains('Lire audio').scrollIntoView().should('be.visible');
+    cy.window().then((win) => {
+      const ionContent = win.document.querySelector('ion-content') as any;
+      const target = win.document.querySelector('.audio-card') as HTMLElement | null;
+      if (ionContent && target) {
+        const inner = ionContent.shadowRoot?.querySelector('.inner-scroll');
+        const scrollTop = (inner ? (inner as HTMLElement).scrollTop : 0) + target.getBoundingClientRect().top - 20;
+        return ionContent.scrollToPoint(0, scrollTop, 0) as Promise<void>;
+      }
+    });
+    cy.contains('Guide audio').should('be.visible');
+    cy.contains('Lire audio').should('be.visible');
     cy.screenshot('place-detail-audio');
   });
 
@@ -67,9 +86,18 @@ describe('03 — Détail d\'un lieu', () => {
     cy.waitForIonicApp();
     cy.wait('@getPlaceDetail');
 
-    cy.contains('Laisser un avis').scrollIntoView().should('be.visible');
+    cy.window().then((win) => {
+      const ionContent = win.document.querySelector('ion-content') as any;
+      const target = win.document.querySelector('.review-form-card') as HTMLElement | null;
+      if (ionContent && target) {
+        const inner = ionContent.shadowRoot?.querySelector('.inner-scroll');
+        const scrollTop = (inner ? (inner as HTMLElement).scrollTop : 0) + target.getBoundingClientRect().top - 20;
+        return ionContent.scrollToPoint(0, scrollTop, 0) as Promise<void>;
+      }
+    });
+    cy.contains('Laisser un avis').should('be.visible');
     detailPage.ratingChips.should('have.length', 5);
-    detailPage.reviewTextarea.scrollIntoView().should('be.visible');
+    detailPage.reviewTextarea.should('be.visible');
     cy.screenshot('place-detail-review-form');
   });
 
